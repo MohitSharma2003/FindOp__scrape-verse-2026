@@ -1,5 +1,4 @@
-import { Schema, model, type InferSchemaType} from 'mongoose';
-import { required } from 'zod/mini';
+import { Schema, model, type InferSchemaType } from "mongoose";
 
 const opportunitySchema = new Schema(
     {
@@ -11,13 +10,19 @@ const opportunitySchema = new Schema(
         
         organization:{
             type: String,
-            required: true,
+            default: "",
             trim: true,
         },
 
         description: {
             type: String,
-            required: true,
+            default: "",
+            trim: true,
+        },
+
+        eligibility: {
+            type: String,
+            default: "",
             trim: true,
         },
 
@@ -42,9 +47,39 @@ const opportunitySchema = new Schema(
             trim: true,
         },
 
+        opportunityUrl: {
+            type: String,
+            trim: true,
+        },
+
+        applicationUrl: {
+            type: String,
+            trim: true,
+        },
+
+        sourceId: {
+            type: Schema.Types.ObjectId,
+            ref: "Source",
+        },
+
+        externalId: {
+            type: String,
+            trim: true,
+        },
+
         source: {
             type: String,
-            required: true,
+            default: "",
+            trim: true,
+        },
+
+        mode: {
+            type: String,
+            enum: ["remote", "in_person", "hybrid", "any"],
+        },
+
+        prize: {
+            type: String,
             trim: true,
         },
 
@@ -73,7 +108,7 @@ const opportunitySchema = new Schema(
 
         status: {
             type: String,
-            enum:["active", "closed", "unknown"],
+            enum:["active", "upcoming", "open", "closed", "unknown"],
             default: "active",
         },
 
@@ -84,6 +119,28 @@ const opportunitySchema = new Schema(
     },
     {
         timestamps:true,
+    },
+);
+
+opportunitySchema.index(
+    { sourceId: 1, opportunityUrl: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            sourceId: { $exists: true },
+            opportunityUrl: { $exists: true },
+        },
+    },
+);
+
+opportunitySchema.index(
+    { source: 1, opportunityUrl: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            source: { $exists: true },
+            opportunityUrl: { $exists: true },
+        },
     },
 );
 

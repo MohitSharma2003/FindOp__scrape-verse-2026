@@ -8,7 +8,9 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test dist/health/health-analyzer.test.js dist/healing/healing.test.js dist/search/search-intent.test.js dist/search/search.test.js dist/discovery/discovery.test.js dist/extraction/extraction.test.js dist/integrations/brightdata/brightdata.client.test.js dist/integrations/brightdata/brightdata.healing.client.test.js dist/filtering/filtering.test.js dist/ranking/ranking.test.js dist/modules/sources/source.registry.test.js",
+    "seed:devfolio": "tsx src/scripts/seed-devfolio.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",

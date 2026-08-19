@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import mongoose from "mongoose";
 
 import { createOpportunitySchema } from "./opportunity.schema.js";
 import {
@@ -28,8 +29,7 @@ export async function createOpportunity(
   if (!result.success) {
     res.status(400).json({
       success: false,
-      error: "Invalid opportunity data",
-      details: result.error.flatten(),
+      error: { code: "INVALID_OPPORTUNITY", message: "Invalid opportunity data" },
     });
 
     return;
@@ -49,10 +49,10 @@ export async function getOpportunity(
 ): Promise<void> {
   const { id } = req.params;
 
-  if (!id || Array.isArray(id)) {
+  if (!id || Array.isArray(id) || !mongoose.isValidObjectId(id)) {
     res.status(400).json({
       success: false,
-      error: "Invalid opportunity ID",
+      error: { code: "INVALID_OPPORTUNITY_ID", message: "Invalid opportunity ID" },
     });
 
     return;
@@ -63,7 +63,7 @@ export async function getOpportunity(
   if (!opportunity) {
     res.status(404).json({
       success: false,
-      error: "Opportunity not found",
+      error: { code: "OPPORTUNITY_NOT_FOUND", message: "Opportunity not found" },
     });
 
     return;

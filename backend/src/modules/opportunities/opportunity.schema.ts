@@ -2,8 +2,8 @@ import { z } from "zod";
 
 export const createOpportunitySchema = z.object({
     title: z.string().trim().min(1),
-    organization: z.string().trim().min(1),
-    description: z.string().trim().min(1),
+    organization: z.string().trim().default(""),
+    description: z.string().trim().default(""),
 
     category: z.enum([
         "hackathon",
@@ -17,7 +17,11 @@ export const createOpportunitySchema = z.object({
     ]),
 
     url: z.string().trim().url(),
-    source: z.string().trim().min(1),
+    opportunityUrl: z.string().trim().url().optional(),
+    applicationUrl: z.string().trim().url().optional(),
+    sourceId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
+    externalId: z.string().trim().min(1).optional(),
+    source: z.string().trim().default(""),
 
     location: z.string().trim().min(1).default("Remote"),
 
@@ -30,7 +34,7 @@ export const createOpportunitySchema = z.object({
     endDate: z.coerce.date().optional(),
 
     status: z
-    .enum(["active", "closed", "unknown"])
+    .enum(["active", "upcoming", "open", "closed", "unknown"])
     .default("active"),
 
     scrapedAt: z.coerce.date().optional(),
