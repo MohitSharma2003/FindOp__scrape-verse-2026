@@ -14,22 +14,38 @@ export function validateRawRecord(value: unknown): ValidationResult {
     return { valid: false, reason: "record is not an object" };
   }
 
-  const title = readNonEmptyString(value.title);
+  const title = readNonEmptyString(value.title ?? value.name);
 
   if (!title) {
     return { valid: false, reason: "title is missing or empty" };
   }
 
-  const opportunityUrl = firstValidUrl(value.hackathon_url, value.product_page_url);
+  const opportunityUrl = firstValidUrl(
+    value.hackathon_url,
+    value.product_page_url,
+    value.url,
+    value.source_url,
+    value.opportunityUrl,
+    value.opportunity_url,
+    value.application_url,
+    value.applicationUrl,
+    value.registration_url,
+  );
 
   if (!opportunityUrl) {
     return {
       valid: false,
-      reason: "no valid absolute hackathon or product URL",
+      reason: "no valid absolute URL found",
     };
   }
 
-  const applicationUrl = toAbsoluteUrl(value.product_page_url);
+  const applicationUrl = firstValidUrl(
+    value.product_page_url,
+    value.application_url,
+    value.applicationUrl,
+    value.registration_url,
+    value.applyUrl,
+  );
 
   return {
     valid: true,

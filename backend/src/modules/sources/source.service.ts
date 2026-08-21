@@ -11,10 +11,21 @@ import {
   updateSourceHealing,
   updateSource,
   setSourceEnabled,
+  markSourceProvisioningFailed,
+  markProvisioningStatus,
+  recordProvisioningFailure,
+  markSourceReady,
+  markCollectorUnavailable,
 } from "./source.repository.js";
+import { MAX_PROVISIONING_ATTEMPTS, nextProvisioningRetryDelayMs, RATE_LIMIT_EXTRA_BACKOFF_MS } from "./source-provisioning.constants.js";
 import type { CreateSourceInput, UpdateSourceInput } from "./source.schema.js";
 import type { HealthAnalysis } from "../../health/health.types.js";
 import type { HealingStatus } from "../../healing/healing.types.js";
+
+export function normalizeSourceDomain(url: string): string {
+  const parsed = new URL(url);
+  return parsed.hostname.toLowerCase().replace(/^www\./, "");
+}
 
 export async function getAllSources() {
   return findAllSources();
@@ -31,7 +42,7 @@ export async function createSourceService(data: CreateSourceInput) {
   if (data.collectorId && await findSourceByCollectorId(data.collectorId)) {
     throw new DuplicateCollectorError("collectorId is already registered");
   }
-  return createSource(data);
+  return createSource({ ...data, domain: normalizeSourceDomain(data.url) });
 }
 
 export async function updateSourceService(id: string, data: UpdateSourceInput) {
@@ -43,7 +54,10 @@ export async function updateSourceService(id: string, data: UpdateSourceInput) {
   if (collectorId && await findSourceByCollectorId(collectorId, id)) {
     throw new DuplicateCollectorError("collectorId is already registered");
   }
-  return updateSource(id, data);
+  return updateSource(id, {
+    ...data,
+    ...(data.url ? { domain: normalizeSourceDomain(data.url) } : {}),
+  });
 }
 
 export async function setSourceEnabledService(id: string, enabled: boolean) {
@@ -51,6 +65,45 @@ export async function setSourceEnabledService(id: string, enabled: boolean) {
   if (!current) return null;
   if (enabled && !current.collectorId) throw new SourceRegistryValidationError("Enabled sources require collectorId");
   return setSourceEnabled(id, enabled);
+}
+
+export async function markSourceProvisioningFailedService(id: string, reason: string) {
+  const current = await findSourceById(id);
+  if (!current) return null;
+  const attempts = (current.provisioningAttempts ?? 0) + 1;
+  const retryable = attempts < MAX_PROVISIONING_ATTEMPTS;
+  return recordProvisioningFailure(id, reason, {
+    retryable,
+    nextRetryAt: retryable ? new Date(Date.now() + nextProvisioningRetryDelayMs(attempts)) : undefined,
+  });
+}
+
+export async function recordRateLimitedProvisioningService(id: string, reason: string) {
+  const current = await findSourceById(id);
+  if (!current) return null;
+  const attempts = (current.provisioningAttempts ?? 0) + 1;
+  const retryable = attempts < MAX_PROVISIONING_ATTEMPTS;
+  return recordProvisioningFailure(id, reason, {
+    retryable,
+    nextRetryAt: retryable
+      ? new Date(Date.now() + nextProvisioningRetryDelayMs(attempts) + RATE_LIMIT_EXTRA_BACKOFF_MS)
+      : undefined,
+  });
+}
+
+export function markProvisioningStatusService(
+  id: string,
+  patch: Parameters<typeof markProvisioningStatus>[1],
+) {
+  return markProvisioningStatus(id, patch);
+}
+
+export function markSourceReadyService(id: string) {
+  return markSourceReady(id);
+}
+
+export function markCollectorUnavailableService(id: string, reason: string, staleCollectorId?: string) {
+  return markCollectorUnavailable(id, reason, staleCollectorId);
 }
 
 export class DuplicateCollectorError extends Error {}

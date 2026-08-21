@@ -147,6 +147,8 @@ export class BrightDataClient {
     }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), remaining);
+    const method = init.method ?? "GET";
+    console.log(`[BD-Scrape] ${method} ${url.pathname}${url.search}`);
 
     try {
       const response = await fetch(url, {
@@ -169,6 +171,7 @@ export class BrightDataClient {
         }
       }
 
+      console.log(`[BD-Scrape] ${method} ${url.pathname}${url.search} → HTTP ${response.status}`);
       if (!response.ok) {
         throw new BrightDataError(
           this.errorMessage(payload, response.status),
@@ -189,6 +192,7 @@ export class BrightDataClient {
       }
 
       const message = error instanceof Error ? error.message : "Unknown error";
+      console.error(`[BD-Scrape] ${method} ${url.pathname}${url.search} → FAILED: ${message}`);
       throw new BrightDataError(`Bright Data request failed: ${message}`);
     } finally {
       clearTimeout(timeout);

@@ -23,10 +23,15 @@ const sourceSchema = new Schema(
         message: "Source URL must be a valid HTTP or HTTPS URL",
       },
     },
+    domain: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
     category: {
       type: String,
       required: true,
-      enum: ["hackathon"],
+      enum: ["hackathon", "internship", "job", "fellowship", "scholarship", "competition", "program", "other"],
     },
     collectorId: {
       type: String,
@@ -37,6 +42,19 @@ const sourceSchema = new Schema(
       type: Boolean,
       default: true,
     },
+    provisioningStatus: {
+      type: String,
+      enum: ["pending", "provisioning", "verifying", "ready", "failed"],
+      default: "pending",
+    },
+    provisioningError: String,
+    provisioningAttempts: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    nextProvisioningRetryAt: Date,
+    lastProvisionedCollectorId: String,
     healthStatus: {
       type: String,
       enum: ["healthy", "unhealthy", "unknown"],
@@ -68,6 +86,7 @@ const sourceSchema = new Schema(
 );
 
 sourceSchema.index({ url: 1 }, { unique: true });
+sourceSchema.index({ domain: 1 }, { unique: true, partialFilterExpression: { domain: { $type: "string" } } });
 sourceSchema.index({ collectorId: 1 }, { unique: true, partialFilterExpression: { collectorId: { $type: "string" } } });
 
 export const Source = model("Source", sourceSchema);

@@ -1,5 +1,5 @@
 import { env } from "../../config/env.js";
-import { BrightDataClient } from "../../integrations/brightdata/brightdata.client.js";
+import { BrightDataClient, BrightDataError } from "../../integrations/brightdata/brightdata.client.js";
 import { ingest } from "../../ingestion/ingestion.service.js";
 import type { IngestionResult } from "../../ingestion/types.js";
 import { analyzeHealth } from "../../health/health-analyzer.js";
@@ -13,10 +13,30 @@ import {
   getSourceById,
   sourceRunStarted,
   updateSourceHealthService,
+  markCollectorUnavailableService,
 } from "./source.service.js";
 
 export class SourceNotFoundError extends Error {}
 export class SourceDisabledError extends Error {}
+
+export type ProviderFailureKind =
+  | "collector_deleted"
+  | "template_missing"
+  | "rate_limited"
+  | "auth"
+  | "transient"
+  | "unknown";
+
+export function classifyBrightDataFailure(error: unknown): ProviderFailureKind {
+  if (!(error instanceof BrightDataError)) return "unknown";
+  const detail = `${error.message} ${error.providerMessage ?? ""}`.toLowerCase();
+  if (error.statusCode === 404 || /collector.*not found|not found.*collector|deleted/.test(detail)) return "collector_deleted";
+  if (error.statusCode === 429 || /rate limit|too many requests/.test(detail)) return "rate_limited";
+  if (/missing.*template|no.*template|template.*(missing|not found|does not exist)/.test(detail)) return "template_missing";
+  if (error.statusCode === 401 || error.statusCode === 403) return "auth";
+  if (error.statusCode !== undefined && error.statusCode >= 500) return "transient";
+  return "unknown";
+}
 
 export interface SourceScrapeResult {
   scrapeRun: unknown;
@@ -30,6 +50,7 @@ export class SourceScrapeFailedError extends Error {
     message: string,
     public readonly scrapeRun: unknown,
     public readonly health?: HealthAnalysis,
+    public readonly providerKind?: ProviderFailureKind,
   ) {
     super(message);
   }
@@ -37,6 +58,8 @@ export class SourceScrapeFailedError extends Error {
 
 export interface ScrapeSourceOptions {
   allowAutomaticHealing?: boolean;
+  /** Verification runs may scrape sources that are not enabled/ready yet. */
+  verificationRun?: boolean;
 }
 
 export async function scrapeSource(
@@ -50,7 +73,7 @@ export async function scrapeSource(
     throw new SourceNotFoundError("Source not found");
   }
 
-  if (!source.enabled) {
+  if (!source.enabled && !options.verificationRun) {
     throw new SourceDisabledError("Source is disabled");
   }
 
@@ -86,6 +109,7 @@ export async function scrapeSource(
     const result = await client.scrape({
       collectorId: source.collectorId,
       url: source.url,
+      ...(source.scraperVersion === "dev" ? { version: "dev" as const } : {}),
     });
     const ingestion = await ingest(result.rawResult, {
       sourceId: id,
@@ -103,7 +127,7 @@ export async function scrapeSource(
       recordsFound: ingestion.recordsFound,
       recordsValid: ingestion.recordsValid,
       recordsRejected: ingestion.recordsRejected,
-      zeroRecordsFailure: source.name === "Devfolio",
+      zeroRecordsFailure: false,
       historicalSuccessfulRuns: history.map((run) => ({
         recordsFound: run.recordsFound,
       })),
@@ -157,6 +181,10 @@ export async function scrapeSource(
 
     const completedAt = new Date();
     const reason = error instanceof Error ? error.message : "Unknown scrape error";
+    const providerKind = classifyBrightDataFailure(error);
+    if (providerKind === "collector_deleted") {
+      await markCollectorUnavailableService(id, `Collector unavailable (deleted or invalid): ${reason}`, source.collectorId ?? undefined);
+    }
     const health = analyzeHealth({
       recordsFound: 0,
       recordsValid: 0,
@@ -172,13 +200,13 @@ export async function scrapeSource(
     });
 
     await updateSourceHealthService(id, completedAt, health);
-    console.error("Scrape failed", { sourceId: id, message: reason });
+    console.error("Scrape failed", { sourceId: id, message: reason, providerKind });
     await maybeStartAutomaticHealing(
       id,
       runningScrapeRun._id.toString(),
       options.allowAutomaticHealing !== false,
     );
-    throw new SourceScrapeFailedError(reason, scrapeRun, health);
+    throw new SourceScrapeFailedError(reason, scrapeRun, health, providerKind);
   }
 }
 

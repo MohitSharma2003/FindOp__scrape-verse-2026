@@ -13,6 +13,7 @@ import {
   updateSourceController,
   scrapeSourceController,
 } from "./source.controller.js";
+import { ingestCandidatesController } from "./source-ingestion.controller.js";
 
 const router = Router();
 
@@ -21,6 +22,7 @@ router.post("/", createSourceController);
 router.patch("/:id/enabled", setSourceEnabledController);
 router.patch("/:id", updateSourceController);
 router.post("/:id/scrape", scrapeSourceController);
+router.post("/ingest-candidates", ingestCandidatesController);
 router.post("/:id/heal", startHealingController);
 router.get("/:id/health", getSourceHealthController);
 router.get("/:id/healing", getHealingHistoryController);

@@ -4,6 +4,7 @@ import type { NormalizedOpportunity } from "../ingestion/types.js";
 import type { FilteringResult } from "../filtering/filtering.types.js";
 import type { RankingResult } from "../ranking/ranking.types.js";
 import type { SearchIntent } from "./search-intent.schema.js";
+import type { OpportunityQueryResult } from "../modules/opportunities/opportunity.repository.js";
 
 export interface SearchRequest {
   intent: SearchIntent;
@@ -20,6 +21,11 @@ export interface SearchMetadata {
   unknown: number;
   rejected: number;
   resultsReturned: number;
+  totalInDatabase?: number;
+  sources?: string[];
+  freshness?: "fresh" | "stale" | "refreshed" | "empty";
+  refreshed?: boolean;
+  refreshError?: string;
 }
 
 export interface SearchResultItem {
@@ -42,4 +48,5 @@ export interface SearchDependencies {
   extract(candidates: CandidateUrl[]): Promise<ExtractionBatchResult>;
   filter(intent: SearchIntent, opportunities: NormalizedOpportunity[], referenceDate?: Date): FilteringResult;
   rank(intent: SearchIntent, filtered: FilteringResult, referenceDate?: Date): RankingResult;
+  queryDB(intent: SearchIntent, limit: number): Promise<OpportunityQueryResult>;
 }

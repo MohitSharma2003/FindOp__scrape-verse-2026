@@ -7,7 +7,7 @@ export interface CandidateUrl {
   source: "web_search";
   searchQuery: string;
   rank: number;
-  discoveryMetadata: { domain: string };
+  discoveryMetadata: { domain: string; category?: string };
 }
 
 export interface DiscoveryQueryResult {

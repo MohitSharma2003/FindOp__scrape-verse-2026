@@ -163,6 +163,7 @@ function isRelevant(item: DiscoveryQueryResult, intent: SearchIntent): boolean {
 }
 
 export function extractCandidates(payload: unknown, query: string, intent: SearchIntent): CandidateUrl[] {
+  const category: string = intent.type;
   return resultItems(payload).map((item, index) => {
     const url = normalizeUrl(item.link ?? item.url);
     if (!url || !isRelevant(item, intent)) return undefined;
@@ -173,9 +174,9 @@ export function extractCandidates(payload: unknown, query: string, intent: Searc
       source: "web_search" as const,
       searchQuery: query,
       rank: typeof item.rank === "number" ? item.rank : index + 1,
-      discoveryMetadata: { domain: url.hostname },
+      discoveryMetadata: { domain: url.hostname, category: category as string },
     };
-  }).filter((candidate): candidate is CandidateUrl => Boolean(candidate));
+  }).filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate));
 }
 
 export async function discoverCandidates(

@@ -20,6 +20,10 @@ export const errorHandler: ErrorRequestHandler = (
   error: unknown, _req: Request, res: Response, _next: NextFunction,
 ): void => {
   if (res.headersSent) return;
+  if (isMalformedJsonError(error)) {
+    res.status(400).json({ success: false, error: { code: "INVALID_JSON", message: "Request body must be valid JSON" } });
+    return;
+  }
   if (error instanceof AppError) {
     res.status(error.statusCode).json({ success: false, error: { code: error.code, message: error.message } });
     return;
@@ -35,3 +39,9 @@ export const errorHandler: ErrorRequestHandler = (
   console.error("Unhandled API error", error instanceof Error ? error.message : error);
   res.status(500).json({ success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } });
 };
+
+function isMalformedJsonError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const candidate = error as Error & { status?: number; type?: string };
+  return candidate.type === "entity.parse.failed" || candidate.status === 400 && error.name === "SyntaxError";
+}

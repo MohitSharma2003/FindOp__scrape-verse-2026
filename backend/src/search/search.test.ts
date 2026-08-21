@@ -90,6 +90,7 @@ function dependencies(overrides: Partial<SearchDependencies> = {}): SearchDepend
     extract: async (candidates) => extraction(candidates.map((_candidate, index) => ({ url: _candidate.url, status: "extracted", opportunity: opportunity(index) }))),
     filter: (_intent, opportunities) => filtering(opportunities),
     rank: (_intent, filtered) => ranking(filtered.results.filter((result) => result.decision !== "mismatch").map((result) => result.opportunity)),
+    queryDB: async () => ({ opportunities: [], totalMatching: 0, oldestScrapedAt: null, freshestScrapedAt: null }),
     ...overrides,
   };
 }

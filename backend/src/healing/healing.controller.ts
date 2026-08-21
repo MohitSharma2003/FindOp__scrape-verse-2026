@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 
 import {
   getHealingHistory,
+  healSource,
   HealingNotEligibleError,
   HealingAlreadyInProgressError,
   HealingAlreadyRecoveredError,
@@ -24,7 +25,7 @@ export async function startHealingController(
     return;
   }
 
-  const input = startHealingSchema.safeParse(req.body);
+  const input = startHealingSchema.safeParse(req.body ?? {});
 
   if (!input.success) {
     res.status(400).json({
@@ -35,7 +36,9 @@ export async function startHealingController(
   }
 
   try {
-    const result = await startHealing(id, input.data.scrapeRunId);
+    const result = input.data.scrapeRunId
+      ? await startHealing(id, input.data.scrapeRunId)
+      : await healSource(id);
     res.status(200).json({ success: true, data: result });
   } catch (error: unknown) {
     if (error instanceof HealingSourceNotFoundError ||

@@ -4,6 +4,8 @@ import test from "node:test";
 import { diagnoseFailure } from "./failure-diagnoser.js";
 import { MAX_HEALING_ATTEMPTS } from "./healing.constants.js";
 import {
+  healSource,
+  HealingNotEligibleError,
   isEligibleHealingRun,
   scrapeRunBelongsToSource,
   startHealing,
@@ -196,4 +198,186 @@ test("failed verification escalates after the maximum healing attempts", async (
   assert.equal(harness.calls.scrapes, MAX_HEALING_ATTEMPTS);
   assert.equal(harness.run.healingStatus, "escalated");
   assert.equal(harness.run.healingHistory.length, MAX_HEALING_ATTEMPTS);
+});
+
+function createHealSourceHarness(opts: {
+  recentRuns: any[];
+  collectorId?: string | null;
+  verificationHealthy?: boolean;
+}) {
+  const sourceId = "source-heal";
+  const source: any = {
+    collectorId: "collector-test",
+    url: "https://example.com",
+    lastFailureReason: "scrape_execution_failed",
+  };
+  if (opts.collectorId !== undefined) source.collectorId = opts.collectorId;
+  const sourceState: any = {};
+  const calls = { repairs: 0, scrapes: 0, creates: 0 };
+
+  const dependencies = {
+    getSourceById: async () => source,
+    findScrapeRunById: async (_id: string) => {
+      if (_id === "diag-run-1") {
+        return {
+          _id: { toString: () => "diag-run-1" },
+          sourceId,
+          healthStatus: "failed",
+          healthReasons: ["scrape_execution_failed"],
+          healingAttempts: 0,
+          healingHistory: [],
+        };
+      }
+      return opts.recentRuns.find((r: any) => r._id.toString() === _id) ?? null;
+    },
+    findRecentScrapeRunsBySource: async () => opts.recentRuns,
+    findHealingRunsBySource: async () => [],
+    createScrapeRun: async (input: any) => {
+      calls.creates += 1;
+      return {
+        _id: { toString: () => "diag-run-1" },
+        ...input,
+      };
+    },
+    updateScrapeRunHealing: async (_id: string, update: any) => {
+      return { _id, ...update };
+    },
+    updateSourceHealing: async (_id: string, update: any) => {
+      Object.assign(sourceState, update);
+      return sourceState;
+    },
+    createHealingClient: () => ({
+      heal: async () => {
+        calls.repairs += 1;
+        return { success: true, pendingApproval: false, status: "completed" };
+      },
+    }),
+    scrapeSource: async () => {
+      calls.scrapes += 1;
+      const healthy = opts.verificationHealthy !== false;
+      const health = healthy
+        ? {
+            status: "healthy" as const,
+            severity: "info" as const,
+            reasons: [],
+            metrics: { currentRecords: 10, validationFailureRate: 0 },
+          }
+        : {
+            status: "failed" as const,
+            severity: "critical" as const,
+            reasons: ["record_count_drop"],
+            metrics: { currentRecords: 1, validationFailureRate: 0 },
+          };
+      const run = {
+        _id: { toString: () => "verify-run" },
+        sourceId,
+        healthStatus: healthy ? "healthy" : "failed",
+        healthReasons: [],
+        healingAttempts: 0,
+      };
+      if (!healthy) {
+        throw new SourceScrapeFailedError("verification failed", run, health);
+      }
+      return {
+        scrapeRun: run,
+        health,
+        snapshotId: "mock-snapshot",
+        ingestion: {
+          recordsFound: 10,
+          recordsValid: 10,
+          recordsRejected: 0,
+          duplicatesFound: 0,
+          recordsPersisted: 10,
+          validationErrors: [],
+        },
+      };
+    },
+  };
+
+  return { sourceId, sourceState, calls, dependencies };
+}
+
+test("healSource finds eligible failed run and heals it", async () => {
+  const eligibleRun = {
+    _id: { toString: () => "run-eligible" },
+    sourceId: "source-heal",
+    healthStatus: "failed",
+    healthReasons: ["scrape_execution_failed"],
+    healingAttempts: 0,
+    healingStatus: null,
+  };
+
+  const harness = createHealSourceHarness({
+    recentRuns: [eligibleRun],
+    verificationHealthy: true,
+  });
+
+  const result = await healSource(harness.sourceId, {
+    dependencies: harness.dependencies,
+  });
+
+  assert.equal(result.status, "recovered");
+  assert.equal(result.attempts, 1);
+  assert.equal(harness.calls.repairs, 1);
+});
+
+test("healSource skips escalated runs and picks eligible one", async () => {
+  const escalatedRun = {
+    _id: { toString: () => "run-esc" },
+    sourceId: "source-heal",
+    healthStatus: "failed",
+    healthReasons: ["scrape_execution_failed"],
+    healingAttempts: 2,
+    healingStatus: "escalated",
+  };
+  const eligibleRun = {
+    _id: { toString: () => "run-ok" },
+    sourceId: "source-heal",
+    healthStatus: "failed",
+    healthReasons: ["scrape_execution_failed"],
+    healingAttempts: 0,
+    healingStatus: null,
+  };
+
+  const harness = createHealSourceHarness({
+    recentRuns: [escalatedRun, eligibleRun],
+    verificationHealthy: true,
+  });
+
+  const result = await healSource(harness.sourceId, {
+    dependencies: harness.dependencies,
+  });
+
+  assert.equal(result.status, "recovered");
+  assert.equal(harness.calls.repairs, 1);
+});
+
+test("healSource creates diagnostic run when no eligible failed run exists", async () => {
+  const harness = createHealSourceHarness({
+    recentRuns: [],
+    verificationHealthy: true,
+  });
+
+  const result = await healSource(harness.sourceId, {
+    dependencies: harness.dependencies,
+  });
+
+  assert.equal(harness.calls.creates, 1);
+  assert.equal(result.status, "recovered");
+  assert.equal(harness.calls.repairs, 1);
+});
+
+test("healSource throws when source has no collectorId", async () => {
+  const harness = createHealSourceHarness({
+    recentRuns: [],
+    collectorId: null,
+  });
+
+  await assert.rejects(
+    () => healSource(harness.sourceId, { dependencies: harness.dependencies }),
+    (err: any) => {
+      assert.ok(err.message.includes("no Bright Data collector"));
+      return true;
+    },
+  );
 });

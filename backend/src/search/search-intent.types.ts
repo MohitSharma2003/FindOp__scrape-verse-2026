@@ -1,6 +1,6 @@
 export const OPPORTUNITY_TYPES = [
-  "hackathon", "internship", "fellowship", "scholarship", "competition",
-  "grant", "job", "conference", "workshop", "accelerator", "other",
+  "hackathon", "internship", "job", "fellowship", "scholarship", "competition",
+  "program", "grant", "conference", "workshop", "accelerator", "other",
 ] as const;
 
 export type OpportunityType = (typeof OPPORTUNITY_TYPES)[number];

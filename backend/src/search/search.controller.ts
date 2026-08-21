@@ -1,8 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
-import { BrightDataError } from "../integrations/brightdata/brightdata.client.js";
 import { AppError } from "../middleware/error-handler.js";
 import { SearchIntentValidationError } from "./search-intent.service.js";
-import { executeSearch, SearchRequestTimeoutError, SearchRequestValidationError } from "./search.service.js";
+import { executeSearch, SearchRequestTimeoutError, SearchRequestValidationError, SearchDiscoveryFailedError } from "./search.service.js";
 
 export async function search(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -17,8 +16,8 @@ export async function search(req: Request, res: Response, next: NextFunction): P
       next(new AppError(504, "SEARCH_TIMEOUT", "Search request timed out"));
       return;
     }
-    if (error instanceof BrightDataError) {
-      next(new AppError(502, "DISCOVERY_FAILED", "Web discovery failed"));
+    if (error instanceof SearchDiscoveryFailedError) {
+      next(new AppError(404, "NO_RESULTS_FOUND", error.message));
       return;
     }
     if (error instanceof AppError) {

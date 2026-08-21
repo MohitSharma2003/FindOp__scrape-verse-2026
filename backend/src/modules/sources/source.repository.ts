@@ -15,7 +15,17 @@ export async function findSourceByUrl(url: string) {
   return Source.findOne({ url });
 }
 
-export async function createSource(data: CreateSourceInput) {
+export async function findSourceByDomain(domain: string) {
+  const escaped = domain.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return Source.findOne({
+    $or: [
+      { domain: domain.toLowerCase() },
+      { url: { $regex: `^https?://(?:www\\.)?${escaped}(?:/|$)`, $options: "i" } },
+    ],
+  });
+}
+
+export async function createSource(data: CreateSourceInput & { domain?: string }) {
   return Source.create(data);
 }
 
@@ -23,12 +33,93 @@ export async function findSourceByCollectorId(collectorId: string, excludeId?: s
   return Source.findOne({ collectorId, ...(excludeId ? { _id: { $ne: excludeId } } : {}) });
 }
 
-export async function updateSource(id: string, data: UpdateSourceInput) {
+export async function updateSource(id: string, data: UpdateSourceInput & { domain?: string }) {
   return Source.findByIdAndUpdate(id, { $set: data }, { new: true, runValidators: true });
 }
 
 export async function setSourceEnabled(id: string, enabled: boolean) {
   return Source.findByIdAndUpdate(id, { $set: { enabled } }, { new: true, runValidators: true });
+}
+
+export async function markSourceProvisioningFailed(id: string, reason: string) {
+  return recordProvisioningFailure(id, reason, { retryable: true });
+}
+
+export type ProvisioningStatus = "pending" | "provisioning" | "verifying" | "ready" | "failed";
+
+export async function markProvisioningStatus(
+  id: string,
+  patch: {
+    provisioningStatus: ProvisioningStatus;
+    provisioningError?: string;
+    nextProvisioningRetryAt?: Date | null;
+    lastProvisionedCollectorId?: string;
+  },
+) {
+  return Source.findByIdAndUpdate(
+    id,
+    {
+      $set: {
+        provisioningStatus: patch.provisioningStatus,
+        ...(patch.provisioningError !== undefined ? { provisioningError: patch.provisioningError } : {}),
+        ...(patch.nextProvisioningRetryAt !== undefined ? { nextProvisioningRetryAt: patch.nextProvisioningRetryAt } : {}),
+        ...(patch.lastProvisionedCollectorId ? { lastProvisionedCollectorId: patch.lastProvisionedCollectorId } : {}),
+      },
+    },
+    { new: true },
+  );
+}
+
+export async function recordProvisioningFailure(
+  id: string,
+  reason: string,
+  options: { retryable: boolean; nextRetryAt?: Date },
+) {
+  return Source.findByIdAndUpdate(
+    id,
+    {
+      $set: {
+        provisioningStatus: "failed",
+        provisioningError: reason,
+        enabled: false,
+        healthStatus: "unhealthy",
+        lastFailureAt: new Date(),
+        lastFailureReason: reason,
+        ...(options.nextRetryAt ? { nextProvisioningRetryAt: options.nextRetryAt } : { nextProvisioningRetryAt: null }),
+      },
+      $inc: { provisioningAttempts: 1 },
+    },
+    { new: true },
+  );
+}
+
+export async function markSourceReady(id: string) {
+  return Source.findByIdAndUpdate(
+    id,
+    {
+      $set: { provisioningStatus: "ready", enabled: true },
+      $unset: { provisioningError: 1, nextProvisioningRetryAt: 1 },
+    },
+    { new: true },
+  );
+}
+
+export async function markCollectorUnavailable(id: string, reason: string, staleCollectorId?: string) {
+  return Source.findByIdAndUpdate(
+    id,
+    {
+      $set: {
+        enabled: false,
+        healthStatus: "unhealthy",
+        lastFailureAt: new Date(),
+        lastFailureReason: reason,
+        provisioningStatus: "failed",
+        provisioningError: reason,
+        ...(staleCollectorId ? { lastProvisionedCollectorId: staleCollectorId } : {}),
+      },
+    },
+    { new: true },
+  );
 }
 
 export async function markSourceRunStarted(id: string, startedAt: Date) {

@@ -5,8 +5,10 @@ import {
   scrapeSource,
 } from "../modules/sources/source-scrape.service.js";
 import {
+  createScrapeRun,
   findScrapeRunById,
   findHealingRunsBySource,
+  findRecentScrapeRunsBySource,
   updateScrapeRunHealing,
 } from "../modules/scrape-runs/scrape-run.repository.js";
 import {
@@ -33,6 +35,7 @@ interface HealingSource {
   collectorId?: string | null;
   url?: string;
   enabled?: boolean;
+  lastFailureReason?: string | null;
 }
 
 interface HealingRun {
@@ -50,6 +53,8 @@ interface HealingDependencies {
   updateScrapeRunHealing: typeof updateScrapeRunHealing;
   updateSourceHealing: typeof updateSourceHealingService;
   findHealingRunsBySource: typeof findHealingRunsBySource;
+  findRecentScrapeRunsBySource: typeof findRecentScrapeRunsBySource;
+  createScrapeRun: typeof createScrapeRun;
   createHealingClient: () => Pick<BrightDataHealingClient, "heal">;
   scrapeSource: typeof scrapeSource;
 }
@@ -60,6 +65,8 @@ const productionDependencies: HealingDependencies = {
   updateScrapeRunHealing,
   updateSourceHealing: updateSourceHealingService,
   findHealingRunsBySource,
+  findRecentScrapeRunsBySource,
+  createScrapeRun,
   createHealingClient: () => new BrightDataHealingClient({
     apiToken: env.BRIGHT_DATA_API_TOKEN,
     timeoutMs: env.BRIGHT_DATA_HEALING_TIMEOUT_MS,
@@ -234,23 +241,6 @@ async function startHealingInternal(
       continue;
     }
 
-    if (repairProductionState === "not_verified") {
-      const completedAt = new Date();
-      const reason = "Repair completed, but the repaired production version was not verified";
-      const scrapeRun = await finishAttempt(
-        dependencies,
-        sourceId,
-        scrapeRunId,
-        attempts,
-        startedAt,
-        completedAt,
-        "repair_available",
-        reason,
-        "repair_available",
-      );
-      return { status: "repair_available", attempts, diagnosis, scrapeRun, error: reason };
-    }
-
     await updateHealingState(dependencies, sourceId, scrapeRunId, "verifying", {
       healingAttempts: attempts,
     });
@@ -261,6 +251,7 @@ async function startHealingInternal(
     try {
       const verification = await dependencies.scrapeSource(sourceId, {
         allowAutomaticHealing: false,
+        verificationRun: true,
       });
       verificationRun = verification.scrapeRun;
       verificationHealth = verification.health;
@@ -398,6 +389,73 @@ export function isEligibleHealingRun(
   reasons: string[],
 ): boolean {
   return healthStatus === "failed" && isHealableFailure(reasons);
+}
+
+export async function healSource(
+  sourceId: string,
+  options: { allowAutomaticHealing?: boolean; dependencies?: Partial<HealingDependencies> } = {},
+): Promise<HealingResult> {
+  const dependencies = { ...productionDependencies, ...options.dependencies };
+  const source = await dependencies.getSourceById(sourceId);
+  if (!source) {
+    throw new HealingSourceNotFoundError("Source not found");
+  }
+  if (!source.collectorId) {
+    throw new HealingNotEligibleError("Source has no Bright Data collector configured");
+  }
+
+  const recentRuns = await dependencies.findRecentScrapeRunsBySource(sourceId, 10);
+  const failedRun = recentRuns.find(
+    (run) =>
+      run.healthStatus === "failed" &&
+      isHealableFailure(run.healthReasons ?? []) &&
+      canAttemptHealing(run.healingAttempts ?? 0, MAX_HEALING_ATTEMPTS) &&
+      !["recovered", "escalated"].includes(run.healingStatus ?? ""),
+  );
+
+  if (!failedRun) {
+    const run = await createDiagnosticScrapeRun(sourceId, source, dependencies);
+    return startHealing(sourceId, run._id.toString(), options);
+  }
+
+  return startHealing(sourceId, failedRun._id.toString(), options);
+}
+
+async function createDiagnosticScrapeRun(
+  sourceId: string,
+  source: HealingSource,
+  dependencies: HealingDependencies,
+): Promise<{ _id: { toString(): string } }> {
+  const reasons: string[] = [];
+  if (!source.collectorId) reasons.push("scrape_execution_failed");
+  const health = diagnoseFailure(reasons.length > 0 ? reasons : ["scrape_execution_failed"]);
+
+  const scrapeRun = await dependencies.createScrapeRun({
+    sourceId,
+    startedAt: new Date(),
+    completedAt: new Date(),
+    status: "failed",
+    recordsFound: 0,
+    recordsValid: 0,
+    recordsRejected: 0,
+    duplicatesFound: 0,
+    recordsPersisted: 0,
+    validationErrors: [],
+    error: source.lastFailureReason ?? "Collector has no template or is unhealthy",
+    healthReasons: health.evidence,
+    healingAttempts: 0,
+    healingHistory: [],
+    healthStatus: "failed",
+    healthSeverity: health.severity,
+    healthMetrics: { currentRecords: 0, validationFailureRate: 0 },
+  });
+
+  await dependencies.updateSourceHealing(sourceId, {
+    healingStatus: "pending",
+    healingAttempts: 0,
+  });
+
+  return scrapeRun;
 }
 
 export async function getHealingHistory(sourceId: string, limit = 10) {

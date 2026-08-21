@@ -12,7 +12,7 @@ export interface BrightDataHealingResult {
   success: boolean;
   pendingApproval: boolean;
   status: string;
-  startedFrom?: "triggered" | "already_in_progress";
+  startedFrom?: "triggered" | "already_in_progress" | "template_created";
   productionState?: "not_verified" | "verified";
   repairedScraper?: {
     collectorId: string;
@@ -49,7 +49,7 @@ export class BrightDataHealingClient {
       BRIGHT_DATA_API_URL,
     );
 
-    let startedFrom: "triggered" | "already_in_progress" = "triggered";
+    let startedFrom: "triggered" | "already_in_progress" | "template_created" = "triggered";
     try {
       await this.requestJson(triggerUrl, {
         method: "POST",
@@ -57,8 +57,25 @@ export class BrightDataHealingClient {
         body: JSON.stringify({ prompt: repairInstruction, custom_input: customInput }),
       }, deadline);
     } catch (error: unknown) {
-      if (!this.isActiveRefactorConflict(error)) throw error;
-      startedFrom = "already_in_progress";
+      if (this.isMissingTemplateError(error)) {
+        console.log("refactor_template failed: no template exists, trying automate_template");
+        await this.createTemplate(collectorId, repairInstruction, customInput, deadline);
+        startedFrom = "template_created";
+        try {
+          await this.requestJson(triggerUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: repairInstruction, custom_input: customInput }),
+          }, deadline);
+        } catch (retryError: unknown) {
+          if (!this.isActiveRefactorConflict(retryError)) throw retryError;
+          startedFrom = "already_in_progress";
+        }
+      } else if (!this.isActiveRefactorConflict(error)) {
+        throw error;
+      } else {
+        startedFrom = "already_in_progress";
+      }
     }
 
     while (Date.now() < deadline) {
@@ -72,13 +89,27 @@ export class BrightDataHealingClient {
       const status = progress.status?.toLowerCase() ?? "unknown";
 
       if (status === "pending_answer") {
-        return {
-          success: false,
-          pendingApproval: true,
-          status,
-          startedFrom,
-          error: "Bright Data requires approval before continuing self-healing",
-        };
+        try {
+          const approveUrl = new URL(
+            `/dca/collectors/${encodeURIComponent(collectorId)}/resume_automation_job`,
+            BRIGHT_DATA_API_URL,
+          );
+          await this.requestJson(approveUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: true, auto_save: true }),
+          }, deadline);
+          await this.delay(Math.min(this.options.pollIntervalMs, deadline - Date.now()));
+          continue;
+        } catch {
+          return {
+            success: false,
+            pendingApproval: true,
+            status,
+            startedFrom,
+            error: "Bright Data requires approval before continuing self-healing",
+          };
+        }
       }
 
       if (["done", "completed", "success", "ready"].includes(status)) {
@@ -121,6 +152,50 @@ export class BrightDataHealingClient {
     if (!(error instanceof BrightDataError) || error.statusCode !== 409) return false;
     const detail = `${error.message} ${error.providerMessage ?? ""}`.toLowerCase();
     return /refactor|healing/.test(detail) && /(already|still|in.?progress|running|active)/.test(detail);
+  }
+
+  private isMissingTemplateError(error: unknown): boolean {
+    if (!(error instanceof BrightDataError)) return false;
+    const body = `${error.message} ${error.providerMessage ?? ""}`.toLowerCase();
+    return (error.statusCode === 500 || error.statusCode === 404) && /missing.*template|no.*template|template.*not/.test(body);
+  }
+
+  private async createTemplate(
+    collectorId: string,
+    description: string,
+    customInput: unknown[],
+    deadline: number,
+  ): Promise<void> {
+    const urls = customInput
+      .filter((item): item is { url: string } => typeof item === "object" && item !== null && "url" in item)
+      .map((item) => item.url)
+      .filter(Boolean);
+
+    const automateUrl = new URL(
+      `/dca/collectors/${encodeURIComponent(collectorId)}/automate_template`,
+      BRIGHT_DATA_API_URL,
+    );
+
+    await this.requestJson(automateUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ description, urls: urls.length > 0 ? urls : undefined }),
+    }, deadline);
+
+    while (Date.now() < deadline) {
+      const progressUrl = new URL(
+        `/dca/collectors/${encodeURIComponent(collectorId)}/automate_template/progress`,
+        BRIGHT_DATA_API_URL,
+      );
+      const progress = await this.requestJson<HealingProgress>(progressUrl, { method: "GET" }, deadline);
+      const status = progress.status?.toLowerCase() ?? "unknown";
+      if (["done", "completed", "success"].includes(status)) return;
+      if (["failed", "error", "rejected"].includes(status)) {
+        throw new BrightDataError(`automate_template failed: ${progress.error ?? progress.message ?? status}`);
+      }
+      await this.delay(Math.min(this.options.pollIntervalMs, deadline - Date.now()));
+    }
+    throw new BrightDataError("automate_template timed out");
   }
 
   private async requestJson<T = unknown>(url: URL, init: RequestInit, deadline: number): Promise<T> {
