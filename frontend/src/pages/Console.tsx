@@ -301,8 +301,23 @@ export function OverviewView({
   const healthy = (sources || []).filter(
     (x) => x.healthStatus === "healthy",
   ).length;
-  const success = (runs || []).filter((x) => x.status === "success").length;
-  const failed = (runs || []).filter((x) => x.status === "failed").length;
+  // Rolling-window run health: a run "delivered" if it produced usable data
+  // (success, or partial with some valid records). Judging the pipeline on a
+  // 30-day window keeps ancient failures from dominating today's numbers.
+  const WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+  const allRuns = runs || [];
+  const now = Date.now();
+  const recent = allRuns.filter(
+    (x) => now - new Date(x.startedAt).getTime() <= WINDOW_MS,
+  );
+  const base = recent.length > 0 ? recent : allRuns;
+  const delivered = base.filter(
+    (x) => x.status === "success" || x.status === "partial",
+  ).length;
+  const failed = base.filter((x) => x.status === "failed").length;
+  const successRate = base.length
+    ? Math.round((delivered / base.length) * 100)
+    : null;
   const healed = (sources || []).reduce((n, x) => n + (x.healingCount || 0), 0);
   const last = [...(runs || [])]
     .filter((x) => x.status === "success")
@@ -321,16 +336,16 @@ export function OverviewView({
         <ConsoleStat
           label="Scrape runs"
           value={runs?.length ?? "—"}
-          detail={runs ? `${success} successful` : "Unavailable"}
+          detail={runs ? `${delivered} delivered` : "Unavailable"}
         />
         <ConsoleStat
           label="Success rate"
-          value={
-            runs && runs.length
-              ? `${Math.round((success / runs.length) * 100)}%`
-              : "—"
+          value={successRate !== null ? `${successRate}%` : "—"}
+          detail={
+            runs
+              ? `${delivered}/${base.length} delivered${failed ? ` · ${failed} failed` : ""}`
+              : "Unavailable"
           }
-          detail={runs ? `${failed} failed` : "Unavailable"}
         />
         <ConsoleStat
           label="Self-healed"

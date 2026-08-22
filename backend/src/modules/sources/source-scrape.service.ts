@@ -75,6 +75,62 @@ export interface ScrapeSourceOptions {
   verificationRun?: boolean;
 }
 
+const SCRAPE_RETRY_DELAY_MS = 3_000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Permanent misconfigurations are not worth retrying; transient provider
+ * hiccups (timeouts, rate limits, queue congestion, 5xx) get one more shot so
+ * a flaky network moment never becomes a permanent "failed" run.
+ */
+function isRetryableScrapeFailure(error: unknown): boolean {
+  const kind = classifyBrightDataFailure(error);
+  return !(kind === "auth" || kind === "collector_deleted" || kind === "template_missing");
+}
+
+async function collectRawRecords(
+  source: {
+    kind: string;
+    collectorId?: string | null;
+    url: string;
+    scraperVersion?: string | null;
+    category: string;
+    discoveryKeywords?: string[] | null;
+  },
+  client: BrightDataClient,
+): Promise<{ rawRecords: unknown[]; snapshotId: string }> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      if (source.kind === "serp_discovery") {
+        return { rawRecords: await collectDiscoveryRecords(source), snapshotId: "serp-discovery" };
+      }
+      const result = await client.scrape({
+        collectorId: source.collectorId!,
+        url: source.url,
+        ...(source.scraperVersion === "dev" ? { version: "dev" as const } : {}),
+      });
+      return {
+        rawRecords: Array.isArray(result.rawResult) ? result.rawResult : [result.rawResult],
+        snapshotId: result.snapshotId,
+      };
+    } catch (error) {
+      lastError = error;
+      if (attempt >= 2 || !isRetryableScrapeFailure(error)) throw error;
+      console.warn("Transient scrape failure — retrying once", {
+        attempt,
+        waitMs: SCRAPE_RETRY_DELAY_MS,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      await delay(SCRAPE_RETRY_DELAY_MS);
+    }
+  }
+  throw lastError;
+}
+
 export async function scrapeSource(
   id: string,
   options: ScrapeSourceOptions = {},
@@ -127,19 +183,9 @@ export async function scrapeSource(
   try {
     // Both source kinds feed the SAME ingestion pipeline; only raw-record
     // collection differs (DCA collector vs SERP discovery + extraction).
-    let snapshotId = "serp-discovery";
-    let rawRecords: unknown[];
-    if (source.kind === "serp_discovery") {
-      rawRecords = await collectDiscoveryRecords(source);
-    } else {
-      const result = await client.scrape({
-        collectorId: source.collectorId!,
-        url: source.url,
-        ...(source.scraperVersion === "dev" ? { version: "dev" as const } : {}),
-      });
-      snapshotId = result.snapshotId;
-      rawRecords = Array.isArray(result.rawResult) ? result.rawResult : [result.rawResult];
-    }
+    // Collection is retry-wrapped so transient provider failures don't turn
+    // into permanent failed runs.
+    const { rawRecords, snapshotId } = await collectRawRecords(source, client);
     const ingestion = await ingest(rawRecords, {
       sourceId: id,
       sourceUrl: source.url,
@@ -261,6 +307,24 @@ export async function scrapeSource(
  * API, keep relevant individual-opportunity URLs, then extract each URL with
  * the generic extraction collector. Raw records feed the shared ingest().
  */
+/** Extract the scoped domain from a `site:` discovery keyword, if any. */
+function scopedDomainFromKeywords(keywords: string[] | null | undefined): string | undefined {
+  for (const keyword of keywords ?? []) {
+    const match = /^site:([a-z0-9.-]+)$/i.exec(keyword.trim());
+    if (match?.[1]) return match[1].toLowerCase().replace(/^www\./i, "");
+  }
+  return undefined;
+}
+
+function sameDomain(url: string, domain: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase().replace(/^www\./i, "");
+    return host === domain || host.endsWith(`.${domain}`);
+  } catch {
+    return false;
+  }
+}
+
 export async function collectDiscoveryRecords(
   source: { category: string; discoveryKeywords?: string[] | null },
 ): Promise<unknown[]> {
@@ -279,6 +343,11 @@ export async function collectDiscoveryRecords(
     skills: [],
   } as unknown as SearchIntent;
 
+  // A `site:`-scoped source must only ingest pages from that domain — SERP
+  // results routinely leak aggregators/news/social pages whose extraction
+  // yields untitled junk and listing URLs, poisoning validation rates.
+  const scopeDomain = scopedDomainFromKeywords(source.discoveryKeywords);
+
   const discoveryClient = new BrightDataDiscoveryClient();
   const extractionClient = new BrightDataExtractionClient();
 
@@ -296,6 +365,7 @@ export async function collectDiscoveryRecords(
     for (const candidate of extractCandidates(payload, query, relevanceIntent)) {
       if (seen.has(candidate.url)) continue;
       seen.add(candidate.url);
+      if (scopeDomain && !sameDomain(candidate.url, scopeDomain)) continue;
       if (candidateUrls.length < env.SERP_DISCOVERY_CANDIDATE_LIMIT) {
         candidateUrls.push(candidate.url);
       }

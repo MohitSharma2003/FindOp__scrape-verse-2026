@@ -116,6 +116,58 @@ export type IndexStats = {
   scrapesRunningNow: number;
 };
 
+export type DemoTimelineEntry = { step: string; detail?: string; at?: string };
+export type DemoRecord = {
+  title: string;
+  url: string;
+  category: string;
+  organization?: string;
+  location?: string;
+  mode?: string;
+  deadline?: string | null;
+  description?: string;
+  signalCategory?: string;
+};
+export type DemoRunStatus =
+  | "queued"
+  | "discovering"
+  | "extracting"
+  | "healthy"
+  | "broken"
+  | "healing"
+  | "recovered"
+  | "escalated"
+  | "failed";
+export type DemoState = {
+  _id: string;
+  config: { url: string; category: string; domain?: string };
+  originalConfig?: { url: string; category: string } | null;
+  status: DemoRunStatus;
+  progress?: { step?: string; done?: number; total?: number };
+  discoveredUrls: string[];
+  extractionFailures: { url: string; error: string }[];
+  records: DemoRecord[];
+  stats: { found: number; valid: number; rejected: number };
+  validationErrors: string[];
+  healingAttempts: number;
+  healingTimeline: DemoTimelineEntry[];
+  scrapedAt?: string;
+  createdAt?: string;
+};
+export type DemoScraper = {
+  _id: string;
+  name: string;
+  inputUrl: string;
+  domain: string;
+  category: string;
+  discoveryKeywords: string[];
+  runCount: number;
+  lastRunAt?: string;
+  promotedSourceId?: string | null;
+  promotedAt?: string | null;
+  createdAt?: string;
+};
+
 const API_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:5000/api"
 ).replace(/\/$/, "");
@@ -197,4 +249,16 @@ export const api = {
       480_000,
     ),
   indexStats: () => request<IndexStats>("/index/stats"),
+  demoState: () => request<DemoState>("/demo/state"),
+  demoScrape: (body?: { url?: string; category?: string }) =>
+    request<DemoState>("/demo/scrape", { method: "POST", body: JSON.stringify(body ?? {}) }),
+  demoBreak: () => request<DemoState>("/demo/break", { method: "POST" }),
+  demoHeal: () => request<DemoState>("/demo/heal", { method: "POST" }),
+  demoReset: () => request<DemoState>("/demo/reset", { method: "POST" }),
+  demoScrapers: () => request<DemoScraper[]>("/demo/scrapers"),
+  demoPromote: (scraperId?: string) =>
+    request<{ alreadyPromoted: boolean; sourceId: string }>("/demo/promote", {
+      method: "POST",
+      body: JSON.stringify(scraperId ? { scraperId } : {}),
+    }),
 };

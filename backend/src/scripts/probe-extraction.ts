@@ -3,10 +3,11 @@ import "dotenv/config";
 const API = "https://api.brightdata.com";
 const TOKEN = process.env.BRIGHT_DATA_API_TOKEN;
 const COLLECTOR = process.env.BRIGHT_DATA_EXTRACTION_COLLECTOR_ID ?? "c_mszs3rnj1j4xohocjq";
+const VERSION = process.env.BRIGHT_DATA_EXTRACTION_COLLECTOR_VERSION || undefined;
 
 async function triggerAndDump(url: string): Promise<void> {
-  console.log(`\n=== ${url} ===`);
-  const triggerRes = await fetch(`${API}/dca/trigger?collector=${COLLECTOR}&queue_next=1`, {
+  console.log(`\n=== ${url}${VERSION ? ` (version=${VERSION})` : ""} ===`);
+  const triggerRes = await fetch(`${API}/dca/trigger?collector=${COLLECTOR}&queue_next=1${VERSION ? `&version=${VERSION}` : ""}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
     body: JSON.stringify([{ url }]),
@@ -36,8 +37,14 @@ async function triggerAndDump(url: string): Promise<void> {
     }
     if (payload && typeof payload === "object") {
       const status = (payload as { status?: string }).status;
-      console.log("status:", status ?? "(none)");
-      if (status && !["building", "collecting", "pending", "queued", "processing", "running", "in_progress"].includes(status)) {
+      const looksLikeRecord = ["title", "url", "source_url", "opportunity_type"].some((key) => key in (payload as object));
+      if (!status || looksLikeRecord) {
+        console.log("DONE — 1 record(s)");
+        console.log(JSON.stringify(payload, null, 2).slice(0, 2200));
+        return;
+      }
+      console.log("status:", status);
+      if (!["building", "collecting", "pending", "queued", "processing", "running", "in_progress"].includes(status)) {
         console.log("FINAL PAYLOAD:", JSON.stringify(payload, null, 2).slice(0, 1200));
         return;
       }

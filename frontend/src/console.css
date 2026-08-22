@@ -326,3 +326,27 @@
 .console-mini-btn:hover:not(:disabled) { border-color: #3d7bd9; color: #fff; }
 .console-mini-btn:disabled { opacity: 0.5; cursor: default; }
 .console-row-note { display: block; margin-top: 4px; font-size: 12px; color: #8fa3bd; max-width: 230px; white-space: normal; }
+
+/* ---- Live demo sandbox (shared primitives; layout lives in styles.css) ---- */
+.demo-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 0 0; }
+.demo-meta dt { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; opacity: .55; }
+.demo-meta dd { margin: 2px 0 0; font-weight: 600; font-size: 14px; }
+.demo-status { display: inline-block; padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; border: 1px solid transparent; white-space: nowrap; }
+.demo-status.healthy { background: rgba(46,204,113,.12); color: #2ecc71; border-color: rgba(46,204,113,.35); }
+.demo-status.broken { background: rgba(231,76,60,.14); color: #ff6b57; border-color: rgba(231,76,60,.4); }
+.demo-status.healing { background: rgba(241,196,15,.12); color: #f1c40f; border-color: rgba(241,196,15,.35); }
+.demo-status.recovered { background: rgba(52,152,219,.14); color: #5dade2; border-color: rgba(52,152,219,.4); }
+.demo-status.escalated { background: rgba(155,89,182,.14); color: #bb8fce; border-color: rgba(155,89,182,.4); }
+.demo-timeline { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.demo-step { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: baseline; padding: 8px 10px; background: rgba(255,255,255,.03); border-radius: 8px; font-size: 13px; }
+.step-name { font-weight: 700; text-transform: capitalize; }
+.step-recovered .step-name, .step-verified .step-name { color: #5dade2; }
+.step-escalated .step-name, .step-attempt_failed .step-name, .step-verification_failed .step-name, .step-run_failed .step-name { color: #ff6b57; }
+.step-detail { opacity: .75; }
+.card-org { margin: 0; font-size: 12.5px; opacity: .7; }
+.card-desc { margin: 0; font-size: 12.5px; opacity: .55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.demo-card footer { margin-top: auto; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.signal-note { color: #f6bd70; font-size: 11.5px; }
+.demo-chip { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: rgba(103,216,234,.14); color: #67d8ea; white-space: nowrap; }
+.demo-error { color: #ff6b57; font-size: 13.5px; }
+.demo-notice { color: #58d6a0; font-size: 13.5px; }

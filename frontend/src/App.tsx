@@ -2,6 +2,7 @@
 import { ConsolePage, HealingConsolePage } from "./pages/Console";
 import { OpportunityList } from "./pages/Discover";
 import { Landing } from "./pages/Home";
+import { LiveDemoPage } from "./pages/LiveDemoSection";
 import {
   Deadlines,
   Detail,
@@ -16,6 +17,7 @@ export function App() {
   if (path === "/login") return <AuthPage />;
   if (path === "/signup") return <AuthPage signup />;
   if (path === "/console/healing") return <HealingConsolePage />;
+if (path === "/demo") return <LiveDemoPage />;
   if (path.startsWith("/console")) return <ConsolePage />;
   if (path === "/") return <Landing />;
   if (path.startsWith("/opportunities/") && path.split("/")[2]) {

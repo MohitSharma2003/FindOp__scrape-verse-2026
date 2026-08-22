@@ -12,6 +12,7 @@ import { env } from "./config/env.js";
 import searchRoutes from "./search/search.routes.js";
 import discoveryRoutes from "./discovery/discovery.routes.js";
 import extractionRoutes from "./extraction/extraction.routes.js";
+import { demoRoutes } from "./demo/demo.routes.js";
 
 
 const app = express();
@@ -34,6 +35,7 @@ app.use("/api/index", indexRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/discovery", discoveryRoutes);
 app.use("/api/extraction", extractionRoutes);
+app.use("/api/demo", demoRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.status(200).json({

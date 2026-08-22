@@ -1343,3 +1343,80 @@ td small {
 }
 .match-reasons{margin:10px 0 0;padding:0;list-style:none;font:12px/1.6 'Inter'}
 .match-reasons li:before{content:'? ';color:#2fbf71}
+
+/* ---- Live demo sandbox (home page section) ---- */
+.live-demo-section { padding: 72px 24px; max-width: 1120px; margin: 0 auto; }
+.live-demo-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; margin-bottom: 22px; }
+.live-demo-sub { color: var(--muted); max-width: 640px; margin: 10px 0 0; font-size: 15.5px; line-height: 1.55; }
+.live-demo-shell {
+  background: linear-gradient(180deg, rgba(139,124,255,.07), rgba(103,216,234,.03)), var(--surface);
+  border: 1px solid var(--line); border-radius: 18px; padding: 22px;
+}
+.live-demo-controls { display: grid; grid-template-columns: 1fr 170px auto; gap: 10px; }
+.live-demo-url { width: 100%; font-size: 14.5px; }
+.live-demo-scrape { white-space: nowrap; font-weight: 700; }
+.live-demo-pipeline { list-style: none; display: flex; gap: 8px; padding: 0; margin: 16px 0 4px; flex-wrap: wrap; }
+.live-demo-pipeline li {
+  display: flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--muted); font-size: 12.5px; font-weight: 600;
+}
+.live-demo-pipeline li.done { border-color: rgba(88,214,160,.45); color: #58d6a0; }
+.live-demo-pipeline li.active { border-color: var(--violet); color: #cabfff; background: rgba(139,124,255,.1); animation: demoPulse 1.2s ease-in-out infinite; }
+.live-demo-pipeline li em { font-style: normal; opacity: .8; font-variant-numeric: tabular-nums; }
+@keyframes demoPulse { 50% { box-shadow: 0 0 0 5px rgba(139,124,255,.12); } }
+.live-demo-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+.button.danger { background: transparent; border: 1px solid rgba(231,76,60,.5); color: #ff6b57; }
+.button.danger:hover:not(:disabled) { background: rgba(231,76,60,.12); border-color: #ff6b57; }
+.live-demo-hint { color: var(--muted); font-size: 13.5px; margin: 12px 0 0; line-height: 1.5; }
+.demo-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin-top: 18px; }
+.demo-card {
+  background: var(--surface2); border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+  display: flex; flex-direction: column; gap: 7px; transition: border-color .15s ease, transform .15s ease;
+}
+.demo-card:hover { border-color: #3a4356; transform: translateY(-2px); }
+.demo-card header { display: flex; justify-content: space-between; gap: 8px; align-items: start; font-size: 14px; line-height: 1.35; }
+.card-meta { opacity: .55; }
+.live-demo-scrapers { margin-top: 22px; padding-top: 16px; border-top: 1px dashed var(--line); }
+.live-demo-scrapers h3 { margin: 0; font-size: 14px; }
+.live-demo-scrapers h3 small { font-weight: 400; color: var(--muted); }
+.live-demo-scrapers ul { list-style: none; display: flex; flex-direction: column; gap: 8px; padding: 0; margin: 12px 0 0; }
+.live-demo-scrapers li { display: flex; align-items: center; gap: 12px; font-size: 13px; flex-wrap: wrap; }
+.live-demo-scrapers code { font-family: ui-monospace, Consolas, monospace; color: #c9d4ea; background: rgba(255,255,255,.04); padding: 3px 8px; border-radius: 6px; }
+.scraper-cat { text-transform: capitalize; color: #67d8ea; font-size: 12px; }
+.scraper-runs { color: var(--muted); font-size: 12px; }
+.scraper-promoted { color: #58d6a0; font-style: normal; font-size: 12.5px; font-weight: 600; }
+@media (max-width: 860px) {
+  .live-demo-controls { grid-template-columns: 1fr; }
+  .live-demo-section { padding: 48px 16px; }
+  .demo-meta { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+/* --- Home page live-demo CTA banner --- */
+.demo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  border: 1px solid #30394a;
+  border-radius: 14px;
+  background: linear-gradient(120deg, #161c28 0%, #1b2230 60%, #201a33 100%);
+  padding: 34px 38px;
+}
+.demo-banner-copy h2 {
+  margin: 8px 0 10px;
+}
+.demo-banner-copy p {
+  color: #a5afbf;
+  max-width: 560px;
+}
+.demo-banner-cta {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+@media (max-width: 780px) {
+  .demo-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 26px;
+  }
+}

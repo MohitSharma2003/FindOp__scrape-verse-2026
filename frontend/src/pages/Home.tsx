@@ -96,6 +96,19 @@ export function Landing() {
             </div>
           )}
         </section>
+        <section className="demo-banner">
+          <div className="demo-banner-copy">
+            <p className="eyebrow">LIVE SANDBOX</p>
+            <h2>See FindOP scrape a website — live.</h2>
+            <p>
+              Paste any site, watch real discovery and extraction happen in your
+              browser, then break the scraper and watch it heal itself.
+            </p>
+          </div>
+          <a className="button primary demo-banner-cta" href="/demo">
+            Try the live demo <span>→</span>
+          </a>
+        </section>
         <section className="what-findop">
           <div className="what-findop-copy">
             <p className="eyebrow">WHAT IS FINDOP?</p>
