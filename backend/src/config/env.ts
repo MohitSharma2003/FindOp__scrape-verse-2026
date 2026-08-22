@@ -8,6 +8,17 @@ const optionalEnv = <T extends z.ZodTypeAny>(schema: T) =>
     schema.optional(),
   );
 
+const collectorVersionEnv = z.preprocess((value) => {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "") return undefined;
+  if (normalized === "dev" || normalized === "production") return normalized;
+  console.warn(
+    `[env] Ignoring invalid BRIGHT_DATA_EXTRACTION_COLLECTOR_VERSION=${JSON.stringify(value)} (expected "dev" or "production"); extraction stays disabled`,
+  );
+  return undefined;
+}, z.enum(["dev", "production"]).optional());
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(5000),
@@ -16,7 +27,7 @@ const envSchema = z.object({
   BRIGHT_DATA_API_TOKEN: optionalEnv(z.string().min(1)),
   BRIGHT_DATA_SERP_ZONE: z.string().trim().min(1).default("serp_api1"),
   BRIGHT_DATA_EXTRACTION_COLLECTOR_ID: optionalEnv(z.string().trim().min(1)),
-  BRIGHT_DATA_EXTRACTION_COLLECTOR_VERSION: optionalEnv(z.enum(["dev", "production"])),
+  BRIGHT_DATA_EXTRACTION_COLLECTOR_VERSION: collectorVersionEnv,
   ENRICHMENT_BATCH_SIZE: z.coerce.number().int().min(0).max(30).default(6),
   DISCOVERY_SEARCH_EXTRACTION_LIMIT: z.coerce.number().int().min(1).max(10).default(3),
   SCHEDULER_ENABLED: z.coerce.boolean().default(true),
