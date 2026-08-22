@@ -21,6 +21,18 @@ test("location query generation", () => assert.match(buildDiscoveryQueries({ typ
 test("mode query generation", () => assert.match(buildDiscoveryQueries({ type: "job", keywords: [], mode: "remote", skills: [] }, now)[0] ?? "", /online/));
 test("date query generation", () => assert.match(buildDiscoveryQueries({ type: "hackathon", keywords: [], mode: "any", date: { kind: "next_month" }, skills: [] }, now)[0] ?? "", /September 2026/));
 test("query count is bounded", () => assert.ok(buildDiscoveryQueries({ type: "hackathon", keywords: ["a", "b", "c"], mode: "remote", skills: [] }).length <= MAX_DISCOVERY_QUERIES));
+
+test("site-scoped keywords explode into one query each instead of being combined", () => {
+  const queries = buildDiscoveryQueries(
+    { type: "hackathon", keywords: ["site:devpost.com", "site:mlh.io", "site:hackerearth.com"], mode: "any", skills: [] },
+    now,
+  );
+  // Google intersects multiple site: operators into an always-empty result
+  // set, so each scope must ride in its own query - and every scope must
+  // get a slot before variants consume the query budget.
+  assert.equal(queries.length, 3, JSON.stringify(queries));
+  assert.ok(queries.every((q) => /^(site:devpost\.com|site:mlh\.io|site:hackerearth\.com) hackathon$/.test(q)), JSON.stringify(queries));
+});
 test("URL normalization removes tracking and trailing slash", () => {
   assert.equal(normalizeCandidateUrl("HTTPS://Example.COM/path/?utm_source=x&gclid=y"), "https://example.com/path");
 });
