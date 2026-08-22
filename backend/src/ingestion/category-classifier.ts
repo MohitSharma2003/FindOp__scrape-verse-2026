@@ -71,6 +71,8 @@ const KNOWN_AGGREGATOR_HOST = /(^|\.)(unstop\.com|internshala\.com|devpost\.com|
 const GENERIC_PREFIXED_SEGMENT = /^(browse|search|category|categories)[-][^/]*$/i;
 const GOOGLE_SERP_JUNK_PATH = /^\/(translate|search|url|amp|cache)(\/|$|\?)/i;
 const GOOGLE_HOST = /(^|\.)google\.[a-z.]{2,}$/i;
+/** Encyclopedias, dictionaries, social media and login-walled networks are never opportunity pages. */
+const BLOCKED_HOST = /(^|\.)(wikipedia\.org|wikimedia\.org|wiktionary\.org|wikiwand\.com|merriam-webster\.com|dictionary\.cambridge\.org|collinsdictionary\.com|linguee\.[a-z.]{2,}|lawinsider\.com|reddit\.com|facebook\.com|instagram\.com|x\.com|twitter\.com|threads\.net|youtube\.com|pinterest\.[a-z.]{2,}|quora\.com|play\.google\.com|medium\.com|linkedin\.com|brightidea\.com)$/i;
 
 export function assessOpportunityUrlQuality(url: string, title?: string): OpportunityUrlQuality {
   const normalizedTitle = title?.trim().toLowerCase() ?? "";
@@ -85,6 +87,7 @@ export function assessOpportunityUrlQuality(url: string, title?: string): Opport
   const lastSegment = segments[segments.length - 1]?.toLowerCase() ?? "";
 
   if (path === "/" && !isProviderDetailSubdomain(parsed.hostname)) return { accepted: false, reason: "homepage_url" };
+  if (BLOCKED_HOST.test(parsed.hostname)) return { accepted: false, reason: "blocked_or_search_page" };
   if (BLOCKED_FIRST_SEGMENTS.test(path)) return { accepted: false, reason: "blocked_or_search_page" };
   if (GOOGLE_HOST.test(parsed.hostname) && GOOGLE_SERP_JUNK_PATH.test(path)) return { accepted: false, reason: "blocked_or_search_page" };
 

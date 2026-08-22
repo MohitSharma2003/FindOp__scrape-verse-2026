@@ -16,11 +16,14 @@ import { Source } from "../modules/sources/source.model.js";
    identifier (never scraped directly) and `kind` marks them honestly.
  */
 const SERP_SOURCES = [
-  { name: "SERP Discovery — Hackathons", category: "hackathon", keywords: ["hackathon", "students", "2026"], frequencyMinutes: 180 },
-  { name: "SERP Discovery — Fellowships", category: "fellowship", keywords: ["research fellowship", "students"], frequencyMinutes: 720 },
-  { name: "SERP Discovery — Grants", category: "grant", keywords: ["developer grant", "startup grant"], frequencyMinutes: 720 },
-  { name: "SERP Discovery — Internships", category: "internship", keywords: ["software internship", "engineering internship"], frequencyMinutes: 720 },
-  { name: "SERP Discovery — Scholarships", category: "scholarship", keywords: ["STEM scholarship", "students"], frequencyMinutes: 1440 },
+  // Every discovery source is scoped to curated quality domains via `site:`
+  // filters — combined with the same-domain candidate filter this makes
+  // off-site junk (encyclopedias, dictionaries, social posts) impossible.
+  { name: "SERP Discovery — Hackathons", category: "hackathon", keywords: ["site:devpost.com", "site:mlh.com", "site:hackerearth.com", "site:dorahacks.io"], frequencyMinutes: 180 },
+  { name: "SERP Discovery — Fellowships", category: "fellowship", keywords: ["site:opportunitydesk.org", "site:youthop.com"], frequencyMinutes: 720 },
+  { name: "SERP Discovery — Grants", category: "grant", keywords: ["site:nlnet.nl", "site:opportunitydesk.org"], frequencyMinutes: 720 },
+  { name: "SERP Discovery — Internships", category: "internship", keywords: ["site:internshala.com", "site:internships.com", "site:outreachy.org"], frequencyMinutes: 720 },
+  { name: "SERP Discovery — Scholarships", category: "scholarship", keywords: ["site:youthop.com", "site:opportunitydesk.org", "site:scholarships360.org"], frequencyMinutes: 1440 },
   // Demo sources scoped to specific listing sites via `site:` filters.
   { name: "Devpost Hackathons", url: "https://devpost.com/hackathons", domain: "devpost.com", category: "hackathon", keywords: ["site:devpost.com", "hackathons 2026"], frequencyMinutes: 180 },
   { name: "MLH Hackathons", url: "https://mlh.io/seasons/2026/events", domain: "mlh.io", category: "hackathon", keywords: ["site:mlh.io", "hackathon events 2026"], frequencyMinutes: 180 },
@@ -28,6 +31,11 @@ const SERP_SOURCES = [
   { name: "Opportunity Desk Fellowships", url: "https://opportunitydesk.org/", domain: "opportunitydesk.org", category: "fellowship", keywords: ["site:opportunitydesk.org", "fellowship scholarship 2026"], frequencyMinutes: 720 },
   { name: "Youth Opportunities", url: "https://youthop.com/", domain: "youthop.com", category: "scholarship", keywords: ["site:youthop.com", "scholarship fellowship"], frequencyMinutes: 720 },
   { name: "Internshala Internships", url: "https://internshala.com/internships/", domain: "internshala.com", category: "internship", keywords: ["site:internshala.com", "internship"], frequencyMinutes: 360 },
+  // Quality-scoped sources for thin categories (jobs, programs, grants).
+  { name: "Remotive Remote Jobs", url: "https://remotive.com/", domain: "remotive.com", category: "job", keywords: ["site:remotive.com", "software engineer job"], frequencyMinutes: 360 },
+  { name: "Google Summer of Code", url: "https://summerofcode.withgoogle.com/", domain: "summerofcode.withgoogle.com", category: "program", keywords: ["site:summerofcode.withgoogle.com", "open source program"], frequencyMinutes: 720 },
+  { name: "Outreachy Open-Source Internships", url: "https://www.outreachy.org/", domain: "outreachy.org", category: "internship", keywords: ["site:outreachy.org", "outreachy internship"], frequencyMinutes: 720 },
+  { name: "NLnet Foundation Grants", url: "https://nlnet.nl/funding/", domain: "nlnet.nl", category: "grant", keywords: ["site:nlnet.nl", "funding open source"], frequencyMinutes: 1440 },
 ] as const;
 
 async function main(): Promise<void> {
