@@ -31,3 +31,4 @@ backend/.env
 frontend/.env
 # internal working notes
 report_opencode.md
+opencode-audit.md
