@@ -75,15 +75,6 @@
   color: #aab3c3;
   line-height: 1.7;
 }
-.console-nav a.selected {
-  background: #191e2a;
-  color: #fff;
-}
-.nav-glyph {
-  display: inline-block;
-  width: 17px;
-  color: #a59cff;
-}
 .skeleton {
   height: 16px;
   border-radius: 5px;

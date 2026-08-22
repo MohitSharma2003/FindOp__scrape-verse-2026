@@ -169,9 +169,7 @@ export function ConsoleNav() {
       <div className="nav-label">WORKSPACE</div>
       {consoleRoutes.map(([p, l], i) => (
         <a href={p} key={p} className={path === p ? "selected" : ""}>
-          <span className="nav-glyph">
-            {["⌂", "◈", "◷", "✓", "↯", "▦", "◌"][i]}
-          </span>
+          <NavIcon index={i} />
           <span>{l}</span>
         </a>
       ))}
@@ -181,6 +179,42 @@ export function ConsoleNav() {
         <span>v0.1.0 · development</span>
       </div>
     </aside>
+  );
+}
+const NAV_ICON_PATHS: ReactNode[] = [
+  <path key="overview" d="M4.5 4.5h6v6h-6zM13.5 4.5h6v6h-6zM4.5 13.5h6v6h-6zM13.5 13.5h6v6h-6z" />,
+  <path key="sources" d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3zm0 0v18M4 7.5l8 4.5 8-4.5" />,
+  <g key="runs">
+    <circle cx="12" cy="12" r="8" />
+    <path d="M12 7.5V12l3 3" />
+  </g>,
+  <g key="validation">
+    <circle cx="12" cy="12" r="8" />
+    <path d="M8.5 12.5l2.5 2.5 4.5-5.5" />
+  </g>,
+  <path key="healing" d="M3 12h4l2-6.5 4 13 2-6.5h6" />,
+  <path key="opportunities" d="M4 6h16M4 12h16M4 18h10" />,
+  <g key="system">
+    <path d="M4 8h8M18 8h2M4 16h4M14 16h6" />
+    <circle cx="15" cy="8" r="2.2" />
+    <circle cx="11" cy="16" r="2.2" />
+  </g>,
+];
+
+export function NavIcon({ index }: { index: number }) {
+  return (
+    <svg
+      className="nav-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {NAV_ICON_PATHS[index % NAV_ICON_PATHS.length]}
+    </svg>
   );
 }
 export function BrightDataSection() {
