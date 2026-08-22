@@ -164,11 +164,7 @@ export class BrightDataClient {
       let payload: unknown = undefined;
 
       if (text) {
-        try {
-          payload = JSON.parse(text) as unknown;
-        } catch {
-          payload = text;
-        }
+        payload = this.parsePayload(text);
       }
 
       console.log(`[BD-Scrape] ${method} ${url.pathname}${url.search} → HTTP ${response.status}`);
@@ -196,6 +192,24 @@ export class BrightDataClient {
       throw new BrightDataError(`Bright Data request failed: ${message}`);
     } finally {
       clearTimeout(timeout);
+    }
+  }
+
+  private parsePayload(text: string): unknown {
+    try {
+      return JSON.parse(text) as unknown;
+    } catch {
+      // Bright Data streams completed datasets as application/jsonl:
+      // one JSON object per line instead of a single JSON document.
+      try {
+        return text
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter((line) => line.length > 0)
+          .map((line) => JSON.parse(line) as unknown);
+      } catch {
+        return text;
+      }
     }
   }
 

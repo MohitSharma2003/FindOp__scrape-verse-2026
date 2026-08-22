@@ -18,6 +18,7 @@
 
 1. **Relevance vs. query scoping split** — `discoveryKeywords` scope the SERP queries only; result relevance uses category terms + junk filter (`backend/src/modules/sources/source-scrape.service.ts`, `backend/src/discovery/discovery.service.ts`). This makes keyword corruption *invisible* to relevance (good), and category corruption a deterministic kill switch.
 2. **Zero-record runs now fail honestly** — `zeroRecordsFailure: ingestion.recordsFound === 0` instead of hardcoded `false` (`source-scrape.service.ts`).
+3. **Bright Data JSONL fix (Aug 22)** — BD changed their DCA API: completed datasets now stream as `application/jsonl` (one object per line) instead of a single JSON array, which broke every collector scrape ("Bright Data returned an unexpected response"). The client parser now handles NDJSON (`brightdata.client.ts`). Verified: Devfolio scrape recovered to 28 found / 21 valid in ~36 s after being dead since Aug 21.
 
 ---
 
