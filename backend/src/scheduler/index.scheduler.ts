@@ -72,19 +72,28 @@ export class IndexScheduler {
     }
   }
 
+  /** A failing source waits at least this long before its next attempt, so a
+   * broken or throttled provider can never trigger rapid-fire retry storms. */
+  private static readonly FAILURE_BACKOFF_MINUTES = 60;
+
   private async execute(sourceId: string, frequencyMinutes: number): Promise<void> {
+    let failed = false;
     try {
       await this.dependencies.runScrape(sourceId);
     } catch (error) {
       // Failures are already recorded by the scrape pipeline (ScrapeRun +
       // health + healing); the scheduler only guarantees the next attempt.
+      failed = true;
       console.log("Scheduled scrape failed", {
         sourceId,
         error: error instanceof Error ? error.message : String(error),
       });
     } finally {
       const completedAt = this.dependencies.now();
-      const nextRunAt = new Date(completedAt.getTime() + frequencyMinutes * 60000);
+      const waitMinutes = failed
+        ? Math.max(IndexScheduler.FAILURE_BACKOFF_MINUTES, frequencyMinutes)
+        : frequencyMinutes;
+      const nextRunAt = new Date(completedAt.getTime() + waitMinutes * 60000);
       try {
         await this.dependencies.onScheduled(sourceId, nextRunAt);
       } catch (error) {

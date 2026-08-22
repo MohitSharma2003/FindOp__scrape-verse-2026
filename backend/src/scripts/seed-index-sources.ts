@@ -58,7 +58,8 @@ async function main(): Promise<void> {
     const domainFallback = `${spec.category}.discovery.findop.local`;
     const existing = await Source.findOne({ url });
     if (existing) {
-      existing.enabled = true;
+      // Enablement is an operator decision (e.g. sources disabled for junk
+      // output stay disabled); seeding only refreshes keywords and schedule.
       existing.scrapeFrequencyMinutes = spec.frequencyMinutes;
       existing.discoveryKeywords = [...spec.keywords];
       if (!existing.nextRunAt || existing.nextRunAt < new Date()) {
