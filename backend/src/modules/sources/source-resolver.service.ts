@@ -82,6 +82,8 @@ async function resolveSourceOnce(
     name: candidate.title || domain,
     url: candidate.url,
     category: (candidate.discoveryMetadata?.category as CreateSourceInput["category"]) || "hackathon",
+    kind: "collector",
+    scrapeFrequencyMinutes: 1440,
     enabled: false,
     healthStatus: "unknown",
   });

@@ -26,7 +26,7 @@ export class SearchRequestValidationError extends Error {
 
 export class SearchRequestTimeoutError extends Error {}
 
-const productionDependencies: SearchDependencies = {
+export const productionDependencies: SearchDependencies = {
   discover: (intent) => discoverCandidates(intent),
   extract: (candidates) => extractOpportunities({ candidates }),
   filter: (intent, opportunities, referenceDate) => filterOpportunities(intent, opportunities, { now: referenceDate }),

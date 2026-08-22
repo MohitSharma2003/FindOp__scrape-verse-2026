@@ -225,6 +225,8 @@ export async function extractOpportunities(
     extracted: valid.length,
     rejected: candidates.length - valid.length,
     persisted: ingestion.recordsPersisted,
+    newRecords: ingestion.newRecords,
+    updatedRecords: ingestion.updatedRecords,
     duplicates: ingestion.duplicatesFound,
     results: results.filter((value): value is ExtractionResultItem => Boolean(value)),
   };

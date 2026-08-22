@@ -268,7 +268,7 @@ test("search completes when the self-healing provider hangs", async () => {
       collectorId: "collector-test",
       healingTimeoutMs: 10,
       createHealingClient: () => ({ heal: async () => new Promise<never>(() => {}) }),
-      ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+      ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
     }),
   }));
   assert.equal(result.metadata.extracted, 1);
@@ -315,7 +315,7 @@ test("complete provider schema survives extraction, filtering, ranking, and sear
   }, dependencies({
     extract: async (candidates) => extractOpportunities({ candidates }, {
       client: { extract: async () => [providerRecord] },
-      ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+      ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
     }),
   }));
   const item = result.results[0];

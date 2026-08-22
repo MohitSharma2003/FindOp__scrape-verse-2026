@@ -31,11 +31,32 @@ const sourceSchema = new Schema(
     category: {
       type: String,
       required: true,
-      enum: ["hackathon", "internship", "job", "fellowship", "scholarship", "competition", "program", "other"],
+      enum: ["hackathon", "internship", "job", "fellowship", "scholarship", "grant", "competition", "program", "other"],
     },
+    // "collector": one Bright Data DCA collector scrapes the source URL.
+    // "serp_discovery": scheduled SERP queries feed candidates through the
+    // generic extraction collector; the full ingestion pipeline is shared.
+    kind: {
+      type: String,
+      enum: ["collector", "serp_discovery"],
+      default: "collector",
+    },
+    discoveryKeywords: {
+      type: [String],
+      default: undefined,
+    },
+    scrapeFrequencyMinutes: {
+      type: Number,
+      min: 15,
+      max: 20160,
+      default: 1440,
+    },
+    nextRunAt: Date,
     collectorId: {
       type: String,
-      required: function(this: { enabled?: boolean }) { return this.enabled !== false; },
+      required: function(this: { enabled?: boolean; kind?: string }) {
+        return this.enabled !== false && this.kind !== "serp_discovery";
+      },
       trim: true,
     },
     enabled: {
@@ -88,6 +109,7 @@ const sourceSchema = new Schema(
 sourceSchema.index({ url: 1 }, { unique: true });
 sourceSchema.index({ domain: 1 }, { unique: true, partialFilterExpression: { domain: { $type: "string" } } });
 sourceSchema.index({ collectorId: 1 }, { unique: true, partialFilterExpression: { collectorId: { $type: "string" } } });
+sourceSchema.index({ enabled: 1, nextRunAt: 1 });
 
 export const Source = model("Source", sourceSchema);
 

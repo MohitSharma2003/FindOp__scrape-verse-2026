@@ -16,7 +16,7 @@ test("ingests candidates independently so one source failure does not stop other
     provisioner: { createCollector: async () => ({ collectorId: "not-used" }) },
     scrape: async (id) => {
       if (id.startsWith("one.")) throw new Error("source unavailable");
-      return { scrapeRun: {}, ingestion: { recordsFound: 1, recordsValid: 1, recordsRejected: 0, duplicatesFound: 0, recordsPersisted: 1, validationErrors: [] }, snapshotId: "snapshot", health: { status: "healthy", severity: "info", reasons: [], metrics: { currentRecords: 1, validationFailureRate: 0 } } };
+      return { scrapeRun: {}, ingestion: { newRecords: 1, updatedRecords: 0, recordsFound: 1, recordsValid: 1, recordsRejected: 0, duplicatesFound: 0, recordsPersisted: 1, validationErrors: [] }, snapshotId: "snapshot", health: { status: "healthy", severity: "info", reasons: [], metrics: { currentRecords: 1, validationFailureRate: 0 } } };
     },
   });
   assert.equal(results.length, 2);

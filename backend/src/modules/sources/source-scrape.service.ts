@@ -1,12 +1,19 @@
 import { env } from "../../config/env.js";
 import { BrightDataClient, BrightDataError } from "../../integrations/brightdata/brightdata.client.js";
+import { BrightDataDiscoveryClient } from "../../integrations/brightdata/brightdata.discovery.client.js";
 import { ingest } from "../../ingestion/ingestion.service.js";
 import type { IngestionResult } from "../../ingestion/types.js";
+import { enrichSparseOpportunities } from "../../enrichment/enrichment.service.js";
+import { BrightDataExtractionClient } from "../../integrations/brightdata/brightdata.extraction.client.js";
 import { analyzeHealth } from "../../health/health-analyzer.js";
 import type { HealthAnalysis } from "../../health/health.types.js";
+import { buildDiscoveryQueries } from "../../discovery/query-builder.js";
+import { extractCandidates } from "../../discovery/discovery.service.js";
+import type { SearchIntent } from "../../search/search-intent.schema.js";
 import {
   createScrapeRun,
   findRecentSuccessfulScrapeRunsBySource,
+  findRunningScrapeRunBySource,
   updateScrapeRun,
 } from "../scrape-runs/scrape-run.repository.js";
 import {
@@ -18,6 +25,12 @@ import {
 
 export class SourceNotFoundError extends Error {}
 export class SourceDisabledError extends Error {}
+export class SourceScrapeInProgressError extends Error {
+  public constructor() {
+    super("A scrape is already running for this source");
+    this.name = "SourceScrapeInProgressError";
+  }
+}
 
 export type ProviderFailureKind =
   | "collector_deleted"
@@ -77,8 +90,14 @@ export async function scrapeSource(
     throw new SourceDisabledError("Source is disabled");
   }
 
-  if (!source.collectorId) {
+  if (source.kind !== "serp_discovery" && !source.collectorId) {
     throw new SourceNotFoundError("Source has no Bright Data collector configured");
+  }
+
+  // Overlap guard: verification scrapes (self-healing) may run alongside an
+  // active run; regular scheduled/manual scrapes may not duplicate one.
+  if (!options.verificationRun && await findRunningScrapeRunBySource(id)) {
+    throw new SourceScrapeInProgressError();
   }
 
   const startedAt = new Date();
@@ -106,14 +125,25 @@ export async function scrapeSource(
   });
 
   try {
-    const result = await client.scrape({
-      collectorId: source.collectorId,
-      url: source.url,
-      ...(source.scraperVersion === "dev" ? { version: "dev" as const } : {}),
-    });
-    const ingestion = await ingest(result.rawResult, {
+    // Both source kinds feed the SAME ingestion pipeline; only raw-record
+    // collection differs (DCA collector vs SERP discovery + extraction).
+    let snapshotId = "serp-discovery";
+    let rawRecords: unknown[];
+    if (source.kind === "serp_discovery") {
+      rawRecords = await collectDiscoveryRecords(source);
+    } else {
+      const result = await client.scrape({
+        collectorId: source.collectorId!,
+        url: source.url,
+        ...(source.scraperVersion === "dev" ? { version: "dev" as const } : {}),
+      });
+      snapshotId = result.snapshotId;
+      rawRecords = Array.isArray(result.rawResult) ? result.rawResult : [result.rawResult];
+    }
+    const ingestion = await ingest(rawRecords, {
       sourceId: id,
       sourceUrl: source.url,
+      sourceCategory: source.category,
     });
     console.log("Ingestion completed", {
       sourceId: id,
@@ -122,6 +152,20 @@ export async function scrapeSource(
       recordsRejected: ingestion.recordsRejected,
       duplicatesFound: ingestion.duplicatesFound,
     });
+    // Listing-derived records are often title+URL only; top up the sparsest
+    // ones in the background without blocking or failing this scrape.
+    if (ingestion.recordsPersisted > 0 && env.BRIGHT_DATA_API_TOKEN && env.BRIGHT_DATA_EXTRACTION_COLLECTOR_ID) {
+      void enrichSparseOpportunities(new BrightDataExtractionClient())
+        .then((summary) => {
+          if (summary.enriched > 0) {
+            console.log("Enrichment completed", { sourceId: id, ...summary });
+          }
+        })
+        .catch((error) => console.log("Enrichment skipped", {
+          sourceId: id,
+          error: error instanceof Error ? error.message : String(error),
+        }));
+    }
     const history = await findRecentSuccessfulScrapeRunsBySource(id, 5);
     const health = analyzeHealth({
       recordsFound: ingestion.recordsFound,
@@ -171,7 +215,7 @@ export async function scrapeSource(
     return {
       scrapeRun,
       ingestion,
-      snapshotId: result.snapshotId,
+      snapshotId,
       health,
     };
   } catch (error: unknown) {
@@ -208,6 +252,77 @@ export async function scrapeSource(
     );
     throw new SourceScrapeFailedError(reason, scrapeRun, health, providerKind);
   }
+}
+
+/**
+ * SERP-discovery sources: run category queries through the Bright Data SERP
+ * API, keep relevant individual-opportunity URLs, then extract each URL with
+ * the generic extraction collector. Raw records feed the shared ingest().
+ */
+export async function collectDiscoveryRecords(
+  source: { category: string; discoveryKeywords?: string[] | null },
+): Promise<unknown[]> {
+  if (!env.BRIGHT_DATA_API_TOKEN) throw new BrightDataError("BRIGHT_DATA_API_TOKEN is not configured");
+  if (!env.BRIGHT_DATA_EXTRACTION_COLLECTOR_ID) {
+    throw new BrightDataError("BRIGHT_DATA_EXTRACTION_COLLECTOR_ID is not configured");
+  }
+
+  const intent = {
+    type: source.category,
+    // Discovery keywords scope the SERP queries themselves; they stay out of
+    // relevance matching because literal phrases like `site:` or "hackathons
+    // 2026" rarely appear verbatim in result titles/snippets. Category terms
+    // (opportunityTerms) plus the junk filter decide relevance.
+    keywords: [],
+    mode: "any",
+    skills: [],
+  } as unknown as SearchIntent;
+
+  const discoveryClient = new BrightDataDiscoveryClient();
+  const extractionClient = new BrightDataExtractionClient();
+
+  const seen = new Set<string>();
+  const candidateUrls: string[] = [];
+  const rawRecords: unknown[] = [];
+
+  for (const query of buildDiscoveryQueries(intent)) {
+    if (candidateUrls.length >= env.SERP_DISCOVERY_CANDIDATE_LIMIT) break;
+    const payload = await discoveryClient.search(query);
+    for (const candidate of extractCandidates(payload, query, intent)) {
+      if (seen.has(candidate.url)) continue;
+      seen.add(candidate.url);
+      if (candidateUrls.length < env.SERP_DISCOVERY_CANDIDATE_LIMIT) {
+        candidateUrls.push(candidate.url);
+      }
+    }
+  }
+
+  console.log("Discovery candidates selected", {
+    sourceCategory: source.category,
+    candidates: candidateUrls.length,
+  });
+
+  // One failed page must not sink the whole run; its absence simply means
+  // fewer records for health analysis to evaluate.
+  const results = await Promise.all(
+    candidateUrls.map(async (url) => {
+      try {
+        return await extractionClient.extract(url);
+      } catch (error) {
+        console.log("Candidate extraction failed", {
+          url,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return null;
+      }
+    }),
+  );
+  for (const item of results) {
+    if (Array.isArray(item)) rawRecords.push(...item);
+    else if (item !== null && item !== undefined) rawRecords.push(item);
+  }
+
+  return rawRecords;
 }
 
 async function maybeStartAutomaticHealing(

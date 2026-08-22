@@ -23,7 +23,7 @@ export interface NormalizedOpportunity {
   organization: string;
   description: string;
   eligibility: string;
-  category: "hackathon" | "internship" | "job" | "fellowship" | "scholarship" | "competition" | "program" | "other";
+  category: "hackathon" | "internship" | "job" | "fellowship" | "scholarship" | "grant" | "competition" | "program" | "other";
   url: string;
   opportunityUrl: string;
   applicationUrl?: string;
@@ -45,11 +45,19 @@ export interface ValidationError {
   reason: string;
 }
 
-export interface IngestionResult {
+export interface PersistenceSummary {
+  /** Documents inserted by the upsert (brand-new opportunities). */
+  newRecords: number;
+  /** Existing documents matched and overwritten by the upsert. */
+  updatedRecords: number;
+}
+
+export interface IngestionResult extends PersistenceSummary {
   recordsFound: number;
   recordsValid: number;
   recordsRejected: number;
   duplicatesFound: number;
   recordsPersisted: number;
+  staleArtifactsRemoved?: number;
   validationErrors: ValidationError[];
 }

@@ -1,0 +1,181 @@
+.login-nav {
+  border: 1px solid #30394a;
+  background: #171d28;
+  border-radius: 8px;
+  padding: 9px 14px;
+  color: #e5e8f0;
+  font-size: 12px;
+}
+.login-nav:hover {
+  border-color: #766ce5;
+  background: #211d42;
+}
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.user-menu button {
+  background: transparent;
+  border: 0;
+  color: #8e9aaf;
+  font-size: 11px;
+}
+.user-menu button:hover {
+  color: #fff;
+}
+.auth-error {
+  border: 1px solid #5e2e39;
+  background: #321a22;
+  border-radius: 7px;
+  padding: 10px;
+  color: #ed7e8d;
+  font-size: 11px;
+}
+.auth-page {
+  overflow: hidden;
+  isolation: isolate;
+}
+.auth-card {
+  width: min(390px, 100%);
+  padding: 30px 28px;
+  animation: auth-card-in 0.55s cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+.auth-card > .findop-mark {
+  animation: auth-logo-in 0.7s 0.08s cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+.auth-orbit {
+  position: absolute;
+  border: 1px solid #8175e733;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: rotate(-24deg);
+  z-index: -1;
+}
+.auth-orbit-one {
+  width: 600px;
+  height: 280px;
+}
+.auth-orbit-two {
+  width: 420px;
+  height: 420px;
+  border-color: #67d8ea24;
+}
+.auth-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #8b7cff;
+  box-shadow: 0 0 14px #8b7cff;
+  z-index: -1;
+}
+.auth-particle-one {
+  top: 24%;
+  left: 18%;
+}
+.auth-particle-two {
+  bottom: 22%;
+  right: 18%;
+  background: #67d8ea;
+  box-shadow: 0 0 14px #67d8ea;
+}
+.oauth-row button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  transition: 0.2s ease;
+}
+.oauth-row button:hover {
+  transform: translateY(-2px);
+}
+.social-icon {
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+.github-icon {
+  color: #f5f7fb;
+}
+.signup-divider {
+  margin: 22px 0 14px;
+}
+.auth-forgot {
+  display: block;
+  margin-top: -5px;
+}
+.auth-card form .auth-forgot + label {
+  margin-top: 2px;
+}
+.auth-card form input {
+  min-height: 48px;
+  padding: 0 14px;
+  font-size: 14px;
+  outline: none;
+  border-color: #30394a;
+  box-shadow: none;
+}
+.auth-card form input:focus {
+  outline: none;
+  border-color: #766ce5;
+  box-shadow: 0 0 0 2px #766ce522;
+}
+.auth-card form input::placeholder {
+  font-size: 13px;
+  color: #758196;
+}
+@keyframes auth-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes auth-logo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-card,
+  .auth-card > .findop-mark {
+    animation: none;
+  }
+  .oauth-row button:hover {
+    transform: none;
+  }
+}
+@media (max-width: 600px) {
+  .login-nav {
+    padding: 8px 11px;
+  }
+  .user-menu button {
+    display: none;
+  }
+  .auth-card {
+    padding: 28px 20px;
+  }
+  .auth-orbit-one {
+    width: 470px;
+    height: 230px;
+  }
+  .auth-orbit-two {
+    width: 330px;
+    height: 330px;
+  }
+  .auth-particle-one {
+    left: 8%;
+  }
+  .auth-particle-two {
+    right: 8%;
+  }
+}

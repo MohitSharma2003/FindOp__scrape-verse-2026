@@ -35,6 +35,7 @@ const opportunitySchema = new Schema(
                 "job",
                 "fellowship",
                 "scholarship",
+                "grant",
                 "competition",
                 "program",
                 "other"
@@ -134,15 +135,22 @@ opportunitySchema.index(
 );
 
 opportunitySchema.index(
-    { source: 1, opportunityUrl: 1 },
-    {
-        unique: true,
-        partialFilterExpression: {
-            source: { $exists: true },
-            opportunityUrl: { $exists: true },
-        },
+  { source: 1, opportunityUrl: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      source: { $exists: true },
+      opportunityUrl: { $exists: true },
     },
+  },
 );
+
+// --- Phase 7A: index query paths (category/location/deadline/status/freshness) ---
+opportunitySchema.index({ category: 1, deadline: 1 });
+opportunitySchema.index({ category: 1, status: 1 });
+opportunitySchema.index({ status: 1, scrapedAt: -1 });
+opportunitySchema.index({ skills: 1 });
+opportunitySchema.index({ updatedAt: -1 });
 
 
 export const Opportunity = model("Opportunity", opportunitySchema);

@@ -152,6 +152,8 @@ function createHealingHarness(verificationHealthy: boolean) {
         health,
         snapshotId: "mock-snapshot",
         ingestion: {
+          newRecords: 10,
+          updatedRecords: 0,
           recordsFound: 10,
           recordsValid: 10,
           recordsRejected: 0,
@@ -283,6 +285,8 @@ function createHealSourceHarness(opts: {
         health,
         snapshotId: "mock-snapshot",
         ingestion: {
+          newRecords: 10,
+          updatedRecords: 0,
           recordsFound: 10,
           recordsValid: 10,
           recordsRejected: 0,

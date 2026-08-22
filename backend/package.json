@@ -9,8 +9,11 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node --test dist/health/health-analyzer.test.js dist/healing/healing.test.js dist/search/search-intent.test.js dist/search/search.test.js dist/search/search-phase4.test.js dist/discovery/discovery.test.js dist/extraction/extraction.test.js dist/integrations/brightdata/brightdata.client.test.js dist/integrations/brightdata/brightdata.collector.client.test.js dist/integrations/brightdata/brightdata.healing.client.test.js dist/filtering/filtering.test.js dist/ranking/ranking.test.js dist/modules/sources/source.registry.test.js dist/modules/sources/source-resolver.test.js dist/modules/sources/source-provisioning.test.js dist/modules/sources/source-ingestion.test.js dist/modules/sources/source-ingestion.controller.test.js dist/ingestion/ingestion-phase4.test.js",
-    "seed:devfolio": "tsx src/scripts/seed-devfolio.ts"
+    "test": "npm run build && node --test dist/health/health-analyzer.test.js dist/healing/healing.test.js dist/search/search-intent.test.js dist/search/search.test.js dist/search/search-phase4.test.js dist/discovery/discovery.test.js dist/extraction/extraction.test.js dist/integrations/brightdata/brightdata.client.test.js dist/integrations/brightdata/brightdata.collector.client.test.js dist/integrations/brightdata/brightdata.healing.client.test.js dist/filtering/filtering.test.js dist/ranking/ranking.test.js dist/modules/sources/source.registry.test.js dist/modules/sources/source-resolver.test.js dist/modules/sources/source-provisioning.test.js dist/modules/sources/source-ingestion.test.js dist/modules/sources/source-ingestion.controller.test.js dist/ingestion/ingestion-phase4.test.js dist/ingestion/category-classifier.test.js dist/modules/opportunities/opportunity.repository.test.js dist/search/discovery-search.test.js dist/enrichment/enrichment.test.js dist/scheduler/index.scheduler.test.js dist/modules/index/index.stats.test.js",
+    "seed:devfolio": "tsx src/scripts/seed-devfolio.ts",
+    "maintain:opportunities": "tsx src/scripts/maintain-opportunities.ts",
+    "enrich:opportunities": "tsx src/scripts/enrich-opportunities.ts",
+    "seed:index-sources": "tsx src/scripts/seed-index-sources.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",

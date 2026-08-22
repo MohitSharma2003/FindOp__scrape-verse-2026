@@ -6,7 +6,9 @@ import morgan from "morgan";
 import opportunityRoutes from "./modules/opportunities/opportunity.routes.js";
 import sourceRoutes from "./modules/sources/source.routes.js";
 import scrapeRunRoutes from "./modules/scrape-runs/scrape-run.routes.js";
+import { indexRoutes } from "./modules/index/index.stats.service.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
+import { env } from "./config/env.js";
 import searchRoutes from "./search/search.routes.js";
 import discoveryRoutes from "./discovery/discovery.routes.js";
 import extractionRoutes from "./extraction/extraction.routes.js";
@@ -15,13 +17,20 @@ import extractionRoutes from "./extraction/extraction.routes.js";
 const app = express();
 
 app.use(helmet());
-app.use(cors());
+// In production, restrict origins via CORS_ORIGIN (comma-separated list).
+const allowedOrigins = env.CORS_ORIGIN?.split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+app.use(cors(allowedOrigins?.length ? { origin: allowedOrigins } : {}));
 app.use(express.json({ limit: "256kb" }));
-app.use(morgan("dev"));
+if (env.NODE_ENV !== "production") {
+  app.use(morgan("dev"));
+}
 
 app.use("/api/opportunities", opportunityRoutes);
 app.use("/api/sources", sourceRoutes);
 app.use("/api/scrape-runs", scrapeRunRoutes);
+app.use("/api/index", indexRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/discovery", discoveryRoutes);
 app.use("/api/extraction", extractionRoutes);

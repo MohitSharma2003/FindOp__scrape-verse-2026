@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: findop-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SELF_HEALING_ENABLED
+        value: "true"
+      - key: SCHEDULER_ENABLED
+        value: "true"
+      - key: MONGODB_URI
+        sync: false
+      - key: BRIGHT_DATA_API_TOKEN
+        sync: false
+      - key: BRIGHT_DATA_EXTRACTION_COLLECTOR_ID
+        sync: false
+      - key: BRIGHT_DATA_EXTRACTION_COLLECTOR_VERSION
+        sync: false
+      # Set to your deployed frontend origin, e.g. https://findop.vercel.app
+      - key: CORS_ORIGIN
+        sync: false

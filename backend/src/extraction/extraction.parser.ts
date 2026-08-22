@@ -1,7 +1,8 @@
 import type { NormalizedOpportunity } from "../ingestion/types.js";
 import type { ExtractionCandidate, ExtractedOpportunity } from "./extraction.types.js";
+import { assessOpportunityUrlQuality, classifyOpportunityCategory, hasMeaningfulOpportunitySignal, isJunkTitle } from "../ingestion/category-classifier.js";
 
-const categories = ["hackathon", "internship", "job", "fellowship", "scholarship", "competition", "program", "other"] as const;
+const categories = ["hackathon", "internship", "job", "fellowship", "scholarship", "grant", "competition", "program", "other"] as const;
 type Category = (typeof categories)[number];
 
 function recordFrom(payload: unknown, depth = 0): Record<string, unknown> | undefined {
@@ -68,18 +69,6 @@ function normalizeMode(value: string | undefined): ExtractedOpportunity["mode"] 
   return undefined;
 }
 
-function normalizeCategory(value: string): Category {
-  const text = value.toLowerCase();
-  if (text.includes("hackathon")) return "hackathon";
-  if (text.includes("intern")) return "internship";
-  if (text.includes("fellowship")) return "fellowship";
-  if (text.includes("scholarship")) return "scholarship";
-  if (text.includes("competition") || text.includes("contest")) return "competition";
-  if (text.includes("job") || text.includes("career")) return "job";
-  if (text.includes("program")) return "program";
-  return categories.includes(text as Category) ? text as Category : "other";
-}
-
 function normalizeSkills(value: unknown): string[] | undefined {
   const values = Array.isArray(value) ? value : typeof value === "string" ? value.split(/[,;\n|]/) : [];
   const skills = values.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean);
@@ -94,7 +83,7 @@ export function parseExtractionResult(
 }
 
 export interface ExtractionParserDiagnostic {
-  reason: "no_record" | "missing_title" | "invalid_opportunity_url" | "insufficient_opportunity_fields" | "blocked_page";
+  reason: "no_record" | "missing_title" | "invalid_opportunity_url" | "generic_opportunity_url" | "generic_title" | "insufficient_opportunity_fields" | "blocked_page";
   responseShape: string;
   firstRecordType: string;
   firstRecordKeys: string[];
@@ -131,8 +120,12 @@ function parseExtractionResultDetailed(
     : undefined;
   const opportunityUrl = urlValue(record, "opportunityUrl", "opportunity_url", "source_url", "url") ?? inputUrl ?? candidate.url;
   if (!opportunityUrl) return { diagnostic: { ...diagnosticBase, reason: "invalid_opportunity_url" } };
-  const description = stringValue(record, "description", "summary", "snippet", "details", "content");
+  const description = stringValue(record, "description", "summary", "snippet", "details", "content")
+    // When the collector template returns no prose, the discovery-engine SERP
+    // snippet is the honest description we already hold for this URL.
+    ?? (candidate.description?.trim() || undefined);
   const organization = stringValue(record, "organization", "organizer", "organization_name", "company");
+  const providerType = stringValue(record, "type", "category", "opportunity_type", "opportunityType") ?? "";
   const hasOpportunitySignal = Boolean(
     description || organization || stringValue(
       record,
@@ -142,20 +135,21 @@ function parseExtractionResultDetailed(
       "required_skills_or_technologies", "skills", "technologies", "prize_or_rewards", "prize",
     ),
   );
-  if (!hasOpportunitySignal) return { diagnostic: { ...diagnosticBase, reason: "insufficient_opportunity_fields" } };
+  const applicationUrl = urlValue(record, "applicationUrl", "application_url", "applyUrl", "registration_url");
+  if (!hasOpportunitySignal || !hasMeaningfulOpportunitySignal(title, [description ?? "", organization ?? "", providerType, applicationUrl ?? ""])) return { diagnostic: { ...diagnosticBase, reason: "insufficient_opportunity_fields" } };
   if (/^(sign in|login|log in|404\b|page not found|access denied)/i.test(title.trim())) {
     return { diagnostic: { ...diagnosticBase, reason: "blocked_page" } };
   }
+  if (isJunkTitle(title)) return { diagnostic: { ...diagnosticBase, reason: "generic_title" } };
+  if (!assessOpportunityUrlQuality(opportunityUrl, title).accepted) return { diagnostic: { ...diagnosticBase, reason: "generic_opportunity_url" } };
   const sourceUrl = new URL(opportunityUrl);
-  const typeText = `${stringValue(record, "type", "category", "opportunity_type", "opportunityType") ?? ""} ${title} ${description ?? ""}`;
-
   return { value: {
     title,
     organization,
     description,
     opportunityUrl,
-    applicationUrl: urlValue(record, "applicationUrl", "application_url", "applyUrl", "registration_url"),
-    type: normalizeCategory(typeText),
+    applicationUrl,
+    type: classifyOpportunityCategory({ title, url: opportunityUrl, providerType, description }),
     startDate: parseDate(record.startDate ?? record.start_date ?? record.event_start_date),
     endDate: parseDate(record.endDate ?? record.end_date ?? record.event_end_date),
     deadline: parseDate(record.deadline ?? record.applicationDeadline ?? record.application_deadline),
@@ -177,7 +171,7 @@ function describePayloadShape(value: unknown): string {
 }
 
 export function toNormalizedOpportunity(value: ExtractedOpportunity): NormalizedOpportunity {
-  const category = normalizeCategory(value.type ?? value.title);
+  const category = classifyOpportunityCategory({ title: value.title, url: value.opportunityUrl, providerType: value.type, description: value.description });
   return {
     title: value.title,
     organization: value.organization ?? "",

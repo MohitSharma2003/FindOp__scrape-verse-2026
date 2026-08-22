@@ -1,0 +1,9 @@
+.healing-event-detail small {
+  display: block;
+  color: #68758a;
+  font: 9px "DM Mono";
+  margin-top: 6px;
+}
+.healing-event-detail {
+  grid-template-columns: 35px 1fr auto;
+}

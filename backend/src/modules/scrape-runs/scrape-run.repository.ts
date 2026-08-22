@@ -28,8 +28,14 @@ export async function findRecentSuccessfulScrapeRunsBySource(
 }
 
 export async function findHealingRunsBySource(sourceId: string, limit: number) {
-  return ScrapeRun.find({ sourceId, healingAttempts: { $gt: 0 } })
-    .sort({ lastHealingStartedAt: -1 })
+  return ScrapeRun.find({
+    sourceId,
+    $or: [
+      { healingAttempts: { $gt: 0 } },
+      { healingStatus: { $exists: true, $nin: [null, ""] } },
+    ],
+  })
+    .sort({ lastHealingStartedAt: -1, startedAt: -1 })
     .limit(limit);
 }
 
@@ -94,4 +100,21 @@ export async function updateScrapeRun(
     : runData;
 
   return ScrapeRun.findByIdAndUpdate(id, { $set: update }, { new: true });
+}
+
+const RUNNING_RUN_STALE_MS = 30 * 60 * 1000;
+
+export async function findRunningScrapeRunBySource(sourceId: string) {
+  const run = await ScrapeRun.findOne({ sourceId, status: "running" }).sort({ startedAt: -1 });
+  if (!run) return null;
+  // A run stuck for over 30 minutes is almost certainly an orphan left by a
+  // crashed server; mark it failed so it cannot block future scrapes.
+  if (run.startedAt && Date.now() - run.startedAt.getTime() > RUNNING_RUN_STALE_MS) {
+    await ScrapeRun.updateOne(
+      { _id: run._id, status: "running" },
+      { $set: { status: "failed", error: "Marked failed: run exceeded maximum expected duration" } },
+    );
+    return null;
+  }
+  return run;
 }

@@ -11,6 +11,7 @@ export const createOpportunitySchema = z.object({
         "job",
         "fellowship",
         "scholarship",
+        "grant",
         "competition",
         "program",
         "other"

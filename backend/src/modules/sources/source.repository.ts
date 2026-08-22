@@ -261,3 +261,22 @@ export async function updateSourceHealing(
 
   return Source.findByIdAndUpdate(id, update, { new: true });
 }
+
+// --- Phase 7A: index scheduler support ---
+
+export async function findDueSources(now: Date, limit = 10) {
+  return Source.find({
+    enabled: true,
+    $or: [
+      { nextRunAt: { $lte: now } },
+      { nextRunAt: { $exists: false } },
+      { nextRunAt: null },
+    ],
+  })
+    .sort({ nextRunAt: 1, createdAt: 1 })
+    .limit(limit);
+}
+
+export async function setSourceNextRunAt(id: string, nextRunAt: Date) {
+  return Source.findByIdAndUpdate(id, { $set: { nextRunAt } }, { new: true });
+}

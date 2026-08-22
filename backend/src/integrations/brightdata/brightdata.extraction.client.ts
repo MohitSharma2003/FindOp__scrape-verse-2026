@@ -14,21 +14,23 @@ export class BrightDataExtractionClient {
       throw new Error("BRIGHT_DATA_EXTRACTION_COLLECTOR_ID is not configured");
     }
 
-    return this.extractWithVersion(candidateUrl);
+    return this.extractWithVersion(candidateUrl, undefined, env.BRIGHT_DATA_EXTRACTION_COLLECTOR_VERSION);
   }
 
   public async extractWithVersion(
     candidateUrl: string,
     repair?: Pick<BrightDataHealingResult, "repairedScraper">,
+    versionOverride?: "dev" | "production",
   ): Promise<unknown> {
     if (!env.BRIGHT_DATA_EXTRACTION_COLLECTOR_ID) {
       throw new Error("BRIGHT_DATA_EXTRACTION_COLLECTOR_ID is not configured");
     }
     const repaired = repair?.repairedScraper;
+    const version = repaired ? "dev" as const : versionOverride === "production" ? undefined : versionOverride;
     const result = await this.client.scrape({
       collectorId: env.BRIGHT_DATA_EXTRACTION_COLLECTOR_ID,
       url: candidateUrl,
-      ...(repaired ? { version: repaired.version } : {}),
+      ...(version ? { version } : {}),
     });
     return result.rawResult;
   }

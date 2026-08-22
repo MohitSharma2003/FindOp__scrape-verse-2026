@@ -2,6 +2,7 @@ import type {
   RawDevfolioRecord,
   ValidatedRawRecord,
 } from "./types.js";
+import { assessOpportunityUrlQuality, hasMeaningfulOpportunitySignal, isJunkTitle, isListingTitle } from "./category-classifier.js";
 
 export interface ValidationResult {
   valid: boolean;
@@ -27,9 +28,6 @@ export function validateRawRecord(value: unknown): ValidationResult {
     value.source_url,
     value.opportunityUrl,
     value.opportunity_url,
-    value.application_url,
-    value.applicationUrl,
-    value.registration_url,
   );
 
   if (!opportunityUrl) {
@@ -37,6 +35,28 @@ export function validateRawRecord(value: unknown): ValidationResult {
       valid: false,
       reason: "no valid absolute URL found",
     };
+  }
+
+  const meaningfulFields = [
+    value.description, value.organization, value.organizer, value.company, value.type,
+    value.category, value.opportunity_type, value.application_url, value.technologies, value.deadline,
+    value.start_date, value.end_date, value.location, value.eligibility, value.skills, value.participation_mode,
+    ...(Array.isArray(value.technologies) ? value.technologies : []),
+    ...(Array.isArray(value.skills) ? value.skills : []),
+  ].filter((field): field is string => typeof field === "string" && field.trim().length > 0);
+  if (isJunkTitle(title)) {
+    return { valid: false, reason: "title is a generic placeholder" };
+  }
+  if (isListingTitle(title)) {
+    return { valid: false, reason: "title describes a listing, not an opportunity" };
+  }
+  if (!hasMeaningfulOpportunitySignal(title, meaningfulFields)) {
+    return { valid: false, reason: "record has no meaningful opportunity signal" };
+  }
+
+  const urlQuality = assessOpportunityUrlQuality(opportunityUrl, title);
+  if (!urlQuality.accepted) {
+    return { valid: false, reason: `opportunity URL is not specific (${urlQuality.reason})` };
   }
 
   const applicationUrl = firstValidUrl(

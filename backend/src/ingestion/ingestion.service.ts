@@ -1,4 +1,7 @@
-import { bulkUpsertOpportunities } from "../modules/opportunities/opportunity.repository.js";
+import {
+  bulkUpsertOpportunities,
+  deleteStaleListingArtifactsForSource,
+} from "../modules/opportunities/opportunity.repository.js";
 import { deduplicateRecords } from "./deduplicator.js";
 import { normalizeRecord } from "./normalizer.js";
 import type { IngestionResult, NormalizedOpportunity } from "./types.js";
@@ -7,6 +10,7 @@ import { validateRawRecord } from "./validator.js";
 export interface IngestionContext {
   sourceId: string;
   sourceUrl: string;
+  sourceCategory?: string;
 }
 
 export async function ingest(
@@ -40,13 +44,20 @@ export async function ingest(
 
   const deduplicated = deduplicateRecords(validRecords);
   const persistence = await bulkUpsertOpportunities(deduplicated.records);
+  // A completed ingestion enumerates the source listing; stored rows for this
+  // source whose URLs current validation would reject are guaranteed stale
+  // (e.g. generic listing pages captured before URL-quality rules existed).
+  const removedStaleIds = await deleteStaleListingArtifactsForSource(context.sourceId);
 
   return {
+    newRecords: persistence.upsertedCount,
+    updatedRecords: persistence.matchedCount,
     recordsFound: records.length,
     recordsValid: validRecords.length,
     recordsRejected: validationErrors.length,
     duplicatesFound: deduplicated.duplicatesFound,
     recordsPersisted: persistence.upsertedCount + persistence.matchedCount,
+    staleArtifactsRemoved: removedStaleIds.length,
     validationErrors,
   };
 }
@@ -58,6 +69,8 @@ export async function ingestNormalizedOpportunities(
   const persistence = await bulkUpsertOpportunities(deduplicated.records);
 
   return {
+    newRecords: persistence.upsertedCount,
+    updatedRecords: persistence.matchedCount,
     recordsValid: records.length,
     duplicatesFound: deduplicated.duplicatesFound,
     recordsPersisted: persistence.upsertedCount + persistence.matchedCount,

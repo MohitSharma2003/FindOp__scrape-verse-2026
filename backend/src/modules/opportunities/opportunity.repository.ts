@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 
 import { Opportunity } from "./opportunity.model.js";
+import { assessOpportunityUrlQuality } from "../../ingestion/category-classifier.js";
 
 import type { createOpportunityInput } from "./opportunity.schema.js";
 import type { NormalizedOpportunity } from "../../ingestion/types.js";
@@ -138,6 +139,47 @@ export async function findOpportunitiesByIntent(
   };
 }
 
+export interface UpsertOperation {
+  updateOne: {
+    filter: Record<string, unknown>;
+    update: { $set: Record<string, unknown> };
+    upsert: true;
+  };
+}
+
+/**
+ * Pure builder so upsert semantics are unit-testable without MongoDB:
+ * identity is (sourceId|source, opportunityUrl) and every normalized field —
+ * including the corrected category and refreshed timestamps — overwrites the
+ * stored document when the same opportunity is re-ingested.
+ */
+export function buildOpportunityUpsertOperations(
+  opportunities: NormalizedOpportunity[],
+): UpsertOperation[] {
+  return opportunities.map((opportunity) => {
+    const sourceId = opportunity.sourceId
+      ? new Types.ObjectId(opportunity.sourceId)
+      : undefined;
+    const filter = sourceId
+      ? { sourceId, opportunityUrl: opportunity.opportunityUrl }
+      : { source: opportunity.source, opportunityUrl: opportunity.opportunityUrl };
+    const { sourceId: _sourceId, ...opportunityFields } = opportunity;
+
+    return {
+      updateOne: {
+        filter,
+        update: {
+          $set: {
+            ...opportunityFields,
+            ...(sourceId ? { sourceId } : {}),
+          },
+        },
+        upsert: true,
+      },
+    };
+  });
+}
+
 export async function bulkUpsertOpportunities(
   opportunities: NormalizedOpportunity[],
 ) {
@@ -145,33 +187,33 @@ export async function bulkUpsertOpportunities(
     return { upsertedCount: 0, matchedCount: 0 };
   }
 
-  const result = await Opportunity.bulkWrite(
-    opportunities.map((opportunity) => {
-      const sourceId = opportunity.sourceId
-        ? new Types.ObjectId(opportunity.sourceId)
-        : undefined;
-      const filter = sourceId
-        ? { sourceId, opportunityUrl: opportunity.opportunityUrl }
-        : { source: opportunity.source, opportunityUrl: opportunity.opportunityUrl };
-      const { sourceId: _sourceId, ...opportunityFields } = opportunity;
-
-      return {
-        updateOne: {
-          filter,
-          update: {
-            $set: {
-              ...opportunityFields,
-              ...(sourceId ? { sourceId } : {}),
-            },
-          },
-          upsert: true,
-        },
-      };
-    }),
-  );
+  const result = await Opportunity.bulkWrite(buildOpportunityUpsertOperations(opportunities));
 
   return {
     upsertedCount: result.upsertedCount,
     matchedCount: result.matchedCount,
   };
+}
+
+/** All stored opportunities for deterministic maintenance passes. */
+export function listAllOpportunitiesForMaintenance() {
+  return Opportunity.find().select("title url opportunityUrl applicationUrl category description organization").lean();
+}
+
+/**
+ * Remove a source's stored opportunities whose URL can no longer be produced
+ * by the current validation rules (generic listings, homepages, search pages).
+ * A healthy scrape enumerates the listing, so these rows are guaranteed stale.
+ */
+export async function deleteStaleListingArtifactsForSource(sourceId: string): Promise<string[]> {
+  const candidates = await Opportunity.find({ sourceId }).select("_id title opportunityUrl").lean();
+  const invalidIds = candidates
+    .filter((doc) => !assessOpportunityUrlQuality(doc.opportunityUrl ?? doc.url ?? "", doc.title).accepted)
+    .map((doc) => String(doc._id));
+
+  if (invalidIds.length > 0) {
+    await Opportunity.deleteMany({ _id: { $in: invalidIds.map((id) => new Types.ObjectId(id)) } });
+  }
+
+  return invalidIds;
 }

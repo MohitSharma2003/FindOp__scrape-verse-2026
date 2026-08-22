@@ -32,6 +32,7 @@ import type {
 } from "./healing.types.js";
 
 interface HealingSource {
+  kind?: string | null;
   collectorId?: string | null;
   url?: string;
   enabled?: boolean;
@@ -130,7 +131,7 @@ async function startHealingInternal(
     throw new HealingNotEligibleError("Scrape run has no healable failure");
   }
 
-  if (!source.collectorId) {
+  if (!source.collectorId && !isDiscoverySource(source)) {
     throw new HealingNotEligibleError("Source has no Bright Data collector configured");
   }
 
@@ -193,18 +194,25 @@ async function startHealingInternal(
     let pendingApproval = false;
     let repairProductionState: "not_verified" | "verified" | undefined;
 
-    try {
-      const repair = await client.heal(
-        source.collectorId,
-        diagnosis.recommendedAction,
-        source.url ? [{ url: source.url }] : [],
-      );
-      repairSucceeded = repair.success;
-      repairError = repair.error;
-      pendingApproval = repair.pendingApproval;
-      repairProductionState = repair.productionState;
-    } catch (error: unknown) {
-      repairError = error instanceof Error ? error.message : "Healing failed";
+    if (isDiscoverySource(source)) {
+      // SERP-discovery sources have no collector to trigger: the repair step
+      // IS the retry - a fresh discovery pass selects new candidate URLs.
+      repairSucceeded = true;
+      console.log("Healing repair (discovery re-scrape)", { sourceId, scrapeRunId, attempts });
+    } else {
+      try {
+        const repair = await client.heal(
+          source.collectorId as string,
+          diagnosis.recommendedAction,
+          source.url ? [{ url: source.url }] : [],
+        );
+        repairSucceeded = repair.success;
+        repairError = repair.error;
+        pendingApproval = repair.pendingApproval;
+        repairProductionState = repair.productionState;
+      } catch (error: unknown) {
+        repairError = error instanceof Error ? error.message : "Healing failed";
+      }
     }
 
     if (!repairSucceeded) {
@@ -377,6 +385,10 @@ export function isHealableFailure(reasons: string[]): boolean {
   return reasons.some((reason) => HEALABLE_REASONS.has(reason));
 }
 
+function isDiscoverySource(source: HealingSource): boolean {
+  return source.kind === "serp_discovery";
+}
+
 export function scrapeRunBelongsToSource(
   sourceId: string,
   runSourceId: string,
@@ -400,7 +412,7 @@ export async function healSource(
   if (!source) {
     throw new HealingSourceNotFoundError("Source not found");
   }
-  if (!source.collectorId) {
+  if (!source.collectorId && !isDiscoverySource(source)) {
     throw new HealingNotEligibleError("Source has no Bright Data collector configured");
   }
 
@@ -441,7 +453,7 @@ async function createDiagnosticScrapeRun(
     duplicatesFound: 0,
     recordsPersisted: 0,
     validationErrors: [],
-    error: source.lastFailureReason ?? "Collector has no template or is unhealthy",
+    error: source.lastFailureReason ?? "Source is unhealthy - diagnostic healing run",
     healthReasons: health.evidence,
     healingAttempts: 0,
     healingHistory: [],

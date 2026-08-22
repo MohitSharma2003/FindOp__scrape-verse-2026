@@ -146,11 +146,11 @@ test("unknown type maps to other", () => {
   assert.equal(parseExtractionResult({ title: "Community Opportunity", description: "Details", url: candidate.url }, candidate)?.type, "other");
 });
 test("candidate URL validation is enforced", async () => {
-  await assert.rejects(() => extractOpportunities({ candidates: [{ url: "javascript:alert(1)" }] }, { client: { extract: async () => validRaw }, ingest: async () => ({ recordsPersisted: 0, duplicatesFound: 0, recordsValid: 0 }) }), ExtractionValidationError);
+  await assert.rejects(() => extractOpportunities({ candidates: [{ url: "javascript:alert(1)" }] }, { client: { extract: async () => validRaw }, ingest: async () => ({ newRecords: 0, updatedRecords: 0, recordsPersisted: 0, duplicatesFound: 0, recordsValid: 0 }) }), ExtractionValidationError);
 });
 test("candidate limit is enforced", async () => {
   const candidates = Array.from({ length: 20 }, (_, index) => ({ url: `https://example.com/${index}` }));
-  const result = await extractOpportunities({ candidates }, { client: { extract: async (url) => ({ ...validRaw, opportunityUrl: url }) }, ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }) });
+  const result = await extractOpportunities({ candidates }, { client: { extract: async (url) => ({ ...validRaw, opportunityUrl: url }) }, ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }) });
   assert.equal(result.candidatesReceived, 20);
   assert.equal(result.candidatesProcessed, Math.min(20, env.MAX_EXTRACTION_CANDIDATES));
 });
@@ -159,7 +159,7 @@ test("multiple candidates are processed with bounded concurrency", async () => {
   let maximum = 0;
   const result = await extractOpportunities({ candidates: [candidate, { url: "https://example.com/two" }, { url: "https://example.com/three" }] }, {
     client: { extract: async (url) => { active += 1; maximum = Math.max(maximum, active); await new Promise((resolve) => setTimeout(resolve, 2)); active -= 1; return { ...validRaw, opportunityUrl: url }; } },
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   assert.equal(result.extracted, 3);
   assert.ok(maximum <= 2);
@@ -167,7 +167,7 @@ test("multiple candidates are processed with bounded concurrency", async () => {
 test("one candidate failure does not fail the batch", async () => {
   const result = await extractOpportunities({ candidates: [candidate, { url: "https://example.com/fail" }] }, {
     client: { extract: async (url) => { if (url.endsWith("fail")) throw new Error("provider failure"); return validRaw; } },
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   assert.equal(result.extracted, 1);
   assert.equal(result.rejected, 1);
@@ -176,7 +176,7 @@ test("one candidate failure does not fail the batch", async () => {
 test("extraction batch exposes deterministic quality metadata", async () => {
   const result = await extractOpportunities({ candidates: [candidate] }, {
     client: { extract: async () => devpostProviderFixture },
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   assert.equal(result.results[0]?.extractionQuality?.status, "healthy");
   assert.equal(result.results[0]?.extractionQuality?.score, 100);
@@ -188,7 +188,7 @@ test("healthy extraction does not trigger self-healing", async () => {
     client: { extract: async () => validRaw },
     collectorId: "collector-test",
     createHealingClient: () => ({ heal: async () => { healingCalls += 1; return { success: true, pendingApproval: false, status: "completed" }; } }),
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   assert.equal(healingCalls, 0);
   assert.equal(result.results[0]?.healing?.status, "not_needed");
@@ -204,7 +204,7 @@ test("incomplete extraction triggers one healing attempt and accepts improved da
     collectorId: "collector-test",
     createHealingClient: () => ({ heal: async (_collectorId: string, instruction: string, input: unknown[]) => { prompt = instruction; customInput = input; return { success: true, pendingApproval: false, status: "completed", productionState: "verified" as const, repairedScraper: { collectorId: "collector-test", version: "dev" as const, template: { code: "repaired" } } }; } }),
     extractHealed: async (_url, repair) => { assert.equal(repair.repairedScraper?.version, "dev"); assert.equal(repair.repairedScraper?.template.code, "repaired"); return validRaw; },
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   assert.equal(extractionCalls, 1);
   assert.equal(result.results[0]?.healing?.status, "recovered");
@@ -222,7 +222,7 @@ test("healing trigger failure preserves the original extracted opportunity", asy
     client: { extract: async () => incomplete },
     collectorId: "collector-test",
     createHealingClient: () => ({ heal: async () => { healingCalls += 1; throw new Error("healing trigger failed"); } }),
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   assert.equal(healingCalls, 1);
   assert.equal(result.extracted, 1);
@@ -236,7 +236,7 @@ test("unverified repair is reported without re-extracting the original collector
     client: { extract: async () => { extractionCalls += 1; return incomplete; } },
     collectorId: "collector-test",
     createHealingClient: () => ({ heal: async () => ({ success: true, pendingApproval: false, status: "completed", productionState: "not_verified" as const }) }),
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   assert.equal(extractionCalls, 1);
   assert.equal(result.results[0]?.healing?.status, "repair_available");
@@ -251,7 +251,7 @@ test("verified healed extraction must improve quality without critical regressio
     collectorId: "collector-test",
     createHealingClient: () => ({ heal: async () => ({ success: true, pendingApproval: false, status: "completed", productionState: "verified" as const, repairedScraper: { collectorId: "collector-test", version: "dev" as const, template: {} } }) }),
     extractHealed: async () => validRaw,
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   assert.equal(result.results[0]?.healing?.status, "recovered");
   assert.equal(result.results[0]?.healing?.healingImproved, true);
@@ -267,7 +267,7 @@ test("same, worse, and critical-regression healed results are preserved", async 
     collectorId: "collector-test",
     createHealingClient: () => ({ heal: async () => repair }),
     extractHealed: async () => healedRaw,
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   const same = await run(initial);
   const worse = await run({ title: "AI Hackathon", description: "Apply now", url: candidate.url });
@@ -285,7 +285,7 @@ test("repaired collection failure is controlled and preserves original data", as
     collectorId: "collector-test",
     createHealingClient: () => ({ heal: async () => ({ success: true, pendingApproval: false, status: "completed", productionState: "verified" as const, repairedScraper: { collectorId: "collector-test", version: "dev" as const, template: {} } }) }),
     extractHealed: async () => { throw new Error("repaired collection failed"); },
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   assert.equal(result.extracted, 1);
   assert.equal(result.results[0]?.healing?.status, "failed");
@@ -301,7 +301,7 @@ test("concurrent incomplete candidates share one collector healing operation", a
     collectorId: "collector-shared",
     createHealingClient: () => ({ heal: async () => { healingCalls += 1; await new Promise((resolve) => setTimeout(resolve, 5)); return repair; } }),
     extractHealed: async () => validRaw,
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   assert.equal(healingCalls, 1);
   assert.equal(result.extracted, 2);
@@ -316,7 +316,7 @@ test("healing that does not improve quality is not accepted", async () => {
     client: { extract: async () => { extractionCalls += 1; return incomplete; } },
     collectorId: "collector-test",
     createHealingClient: () => ({ heal: async () => ({ success: true, pendingApproval: false, status: "completed" }) }),
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   assert.equal(extractionCalls, 1);
   assert.equal(result.results[0]?.healing?.status, "repair_available");
@@ -329,13 +329,13 @@ test("pending approval and timeout are controlled healing outcomes", async () =>
     client: { extract: async () => incomplete },
     collectorId: "collector-test",
     createHealingClient: () => ({ heal: async () => ({ success: false, pendingApproval: true, status: "pending_answer", error: "approval required" }) }),
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   const timeout = await extractOpportunities({ candidates: [candidate] }, {
     client: { extract: async () => incomplete },
     collectorId: "collector-test",
     createHealingClient: () => ({ heal: async () => { throw new Error("Bright Data healing timed out"); } }),
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   assert.equal(pending.results[0]?.healing?.status, "pending_approval");
   assert.equal(timeout.results[0]?.healing?.status, "timeout");
@@ -348,7 +348,7 @@ test("a hanging healing dependency returns a controlled extraction result", asyn
     collectorId: "collector-test",
     healingTimeoutMs: 10,
     createHealingClient: () => ({ heal: async () => new Promise<never>(() => {}) }),
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   assert.equal(result.extracted, 1);
   assert.equal(result.results[0]?.healing?.status, "timeout");
@@ -357,7 +357,7 @@ test("existing ingestion integration receives normalized records and reports dup
   let received = 0;
   const result = await extractOpportunities({ candidates: [candidate, candidate] }, {
     client: { extract: async () => validRaw },
-    ingest: async (records) => { received = records.length; return { recordsPersisted: 1, duplicatesFound: 1, recordsValid: records.length }; },
+    ingest: async (records) => { received = records.length; return { newRecords: 1, updatedRecords: 0, recordsPersisted: 1, duplicatesFound: 1, recordsValid: records.length }; },
   });
   assert.equal(received, 2);
   assert.equal(result.persisted, 1);
@@ -366,7 +366,7 @@ test("existing ingestion integration receives normalized records and reports dup
 test("empty and malformed extraction responses are rejected", async () => {
   const result = await extractOpportunities({ candidates: [candidate, { url: "https://example.com/malformed" }] }, {
     client: { extract: async (url) => url.endsWith("malformed") ? "not-json" : [] },
-    ingest: async (records) => ({ recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
+    ingest: async (records) => ({ newRecords: records.length, updatedRecords: 0, recordsPersisted: records.length, duplicatesFound: 0, recordsValid: records.length }),
   });
   assert.equal(result.extracted, 0);
   assert.equal(result.rejected, 2);

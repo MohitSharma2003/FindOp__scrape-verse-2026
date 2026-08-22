@@ -16,6 +16,7 @@ import {
   SourceDisabledError,
   SourceNotFoundError,
   SourceScrapeFailedError,
+  SourceScrapeInProgressError,
 } from "./source-scrape.service.js";
 import { getSourceHealth } from "./source-health.service.js";
 
@@ -170,6 +171,11 @@ export async function scrapeSourceController(
 
     if (error instanceof SourceDisabledError) {
       res.status(409).json({ success: false, error: { code: "SOURCE_NOT_SCRAPABLE", message: error.message } });
+      return;
+    }
+
+    if (error instanceof SourceScrapeInProgressError) {
+      res.status(409).json({ success: false, error: { code: "SCRAPE_IN_PROGRESS", message: error.message } });
       return;
     }
 

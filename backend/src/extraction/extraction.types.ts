@@ -3,6 +3,8 @@ import type { NormalizedOpportunity } from "../ingestion/types.js";
 export interface ExtractionCandidate {
   url: string;
   title?: string;
+  /** SERP snippet carried over from discovery; honest fallback when a collector record lacks prose. */
+  description?: string;
   searchQuery?: string;
   rank?: number;
 }
@@ -60,6 +62,8 @@ export interface ExtractionBatchResult {
   extracted: number;
   rejected: number;
   persisted: number;
+  newRecords?: number;
+  updatedRecords?: number;
   duplicates: number;
   results: ExtractionResultItem[];
 }

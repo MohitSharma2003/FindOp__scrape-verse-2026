@@ -3,10 +3,12 @@ import type {
   RawDevfolioRecord,
   ValidatedRawRecord,
 } from "./types.js";
+import { applyCategoryFallback, classifyOpportunityCategory } from "./category-classifier.js";
 
 export interface NormalizationContext {
   sourceId: string;
   sourceUrl: string;
+  sourceCategory?: string;
 }
 
 export function normalizeRecord(
@@ -24,7 +26,12 @@ export function normalizeRecord(
     organization: readString(record.organization ?? record.organizer ?? record.company) ?? "",
     description: readString(record.description ?? record.summary ?? record.snippet) ?? "",
     eligibility: readString(record.eligibility) ?? "",
-    category: inferCategory(record),
+    category: applyCategoryFallback(classifyOpportunityCategory({
+      title: readString(record.title),
+      url: opportunityUrl,
+      providerType: readString(record.category ?? record.opportunity_type ?? record.type),
+      description: readString(record.description ?? record.summary ?? record.snippet),
+    }), context.sourceCategory),
     url: opportunityUrl,
     opportunityUrl,
     applicationUrl,
@@ -40,26 +47,6 @@ export function normalizeRecord(
     prize: readString(record.prize ?? record.prizeAmount ?? record.prize_or_rewards ?? record.rewards),
     scrapedAt: new Date(),
   };
-}
-
-function inferCategory(record: RawDevfolioRecord): NormalizedOpportunity["category"] {
-  const text = [
-    record.category,
-    record.opportunity_type,
-    record.type,
-    record.title,
-    record.description,
-    record.status,
-  ].filter((v): v is string => typeof v === "string").join(" ").toLowerCase();
-
-  if (text.includes("hackathon") || text.includes("hack ")) return "hackathon";
-  if (text.includes("intern")) return "internship";
-  if (text.includes("fellowship")) return "fellowship";
-  if (text.includes("scholarship")) return "scholarship";
-  if (text.includes("competition") || text.includes("contest")) return "competition";
-  if (text.includes("job") || text.includes("career") || text.includes("position")) return "job";
-  if (text.includes("program") || text.includes("accelerator")) return "program";
-  return "other";
 }
 
 function normalizeMode(record: RawDevfolioRecord): NormalizedOpportunity["mode"] {

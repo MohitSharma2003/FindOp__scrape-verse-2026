@@ -106,6 +106,7 @@ test("Phase 4 Ingestion: Record with opportunity_url field is validated", () => 
   const raw = makeRecord({
     title: "Test Opportunity",
     opportunity_url: "https://example.com/opp",
+    description: "A specific opportunity.",
   });
   const validation = validateRawRecord(raw);
   assert.equal(validation.valid, true);
@@ -115,6 +116,7 @@ test("Phase 4 Ingestion: Record with opportunityUrl field is validated", () => {
   const raw = makeRecord({
     title: "Test Opportunity",
     opportunityUrl: "https://example.com/opp",
+    description: "A specific opportunity.",
   });
   const validation = validateRawRecord(raw);
   assert.equal(validation.valid, true);
@@ -126,13 +128,14 @@ test("Phase 4 Ingestion: Record with application_url field is validated", () => 
     application_url: "https://example.com/apply",
   });
   const validation = validateRawRecord(raw);
-  assert.equal(validation.valid, true);
+  assert.equal(validation.valid, false);
 });
 
 test("Phase 4 Ingestion: Record with source_url field is validated", () => {
   const raw = makeRecord({
     title: "Test Opportunity",
     source_url: "https://example.com/source",
+    description: "A specific opportunity.",
   });
   const validation = validateRawRecord(raw);
   assert.equal(validation.valid, true);
@@ -142,6 +145,7 @@ test("Phase 4 Ingestion: Record with name instead of title is validated", () => 
   const raw = makeRecord({
     name: "Test Opportunity",
     hackathon_url: "https://example.com/opp",
+    description: "A specific hackathon opportunity.",
   });
   const validation = validateRawRecord(raw);
   assert.equal(validation.valid, true);
@@ -167,7 +171,7 @@ test("Phase 4 Ingestion: Non-object record is rejected", () => {
 test("Phase 4 Ingestion: Skills are extracted from various fields", () => {
   const raw = makeRecord({
     title: "AI Dev",
-    url: "https://example.com",
+    url: "https://example.com/opportunity",
     technologies: ["Python", "TensorFlow"],
   });
   const validation = validateRawRecord(raw);
@@ -178,7 +182,7 @@ test("Phase 4 Ingestion: Skills are extracted from various fields", () => {
 test("Phase 4 Ingestion: Skills from string field are split correctly", () => {
   const raw = makeRecord({
     title: "AI Dev",
-    url: "https://example.com",
+    url: "https://example.com/opportunity",
     technologies: "Python, TensorFlow, PyTorch",
   });
   const validation = validateRawRecord(raw);
@@ -197,7 +201,7 @@ test("Phase 4 Ingestion: Mode inference from participation_mode", () => {
     ["hybrid", "hybrid"],
   ];
   for (const [input, expected] of modes) {
-    const raw = makeRecord({ title: "Test", url: "https://example.com", participation_mode: input });
+    const raw = makeRecord({ title: "Test", url: "https://example.com/opportunity", participation_mode: input });
     const validation = validateRawRecord(raw);
     const normalized = normalizeRecord(validation.candidate!, context);
     assert.equal(normalized.mode, expected, `Mode "${input}" should normalize to "${expected}"`);
@@ -207,7 +211,7 @@ test("Phase 4 Ingestion: Mode inference from participation_mode", () => {
 test("Phase 4 Ingestion: Dates are parsed from various field names", () => {
   const raw = makeRecord({
     title: "Test",
-    url: "https://example.com",
+    url: "https://example.com/opportunity",
     start_date: "2026-09-01",
     end_date: "2026-09-30",
     deadline: "2026-08-25",
