@@ -95,11 +95,41 @@ export function SourcesView({
   retry: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const [busy, setBusy] = useState<Record<string, string>>({});
+  const [notes, setNotes] = useState<Record<string, string>>({});
   const items = (sources || []).filter((x) =>
     `${x.name} ${x.domain || ""} ${x.category}`
       .toLowerCase()
       .includes(query.toLowerCase()),
   );
+
+  const runAction = async (id: string, kind: "scrape" | "heal") => {
+    setBusy((b) => ({ ...b, [id]: kind }));
+    setNotes((n) => ({ ...n, [id]: "" }));
+    try {
+      if (kind === "scrape") await api.scrapeSource(id);
+      else await api.healSource(id);
+      setNotes((n) => ({
+        ...n,
+        [id]:
+          kind === "scrape"
+            ? "✓ Scrape finished — see Runs"
+            : "✓ Healing finished — see Self-Healing",
+      }));
+    } catch (e) {
+      setNotes((n) => ({
+        ...n,
+        [id]: `⚠ ${e instanceof Error ? e.message : "Action failed"}`,
+      }));
+    } finally {
+      setBusy((b) => {
+        const next = { ...b };
+        delete next[id];
+        return next;
+      });
+      retry();
+    }
+  };
   return (
     <Card className="console-panel">
       <div className="console-panel-heading">
@@ -132,6 +162,7 @@ export function SourcesView({
               <th>Last success</th>
               <th>Failures</th>
               <th>Healing</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -159,6 +190,25 @@ export function SourcesView({
                 <td>{short(s.lastSuccessfulRunAt)}</td>
                 <td>{s.consecutiveFailures ?? 0}</td>
                 <td>{s.healingCount ?? 0}</td>
+                <td className="console-actions-cell">
+                  <button
+                    className="console-mini-btn"
+                    disabled={Boolean(busy[s._id])}
+                    onClick={() => void runAction(s._id, "scrape")}
+                  >
+                    {busy[s._id] === "scrape" ? "Scraping…" : "Scrape now"}
+                  </button>
+                  <button
+                    className="console-mini-btn"
+                    disabled={Boolean(busy[s._id])}
+                    onClick={() => void runAction(s._id, "heal")}
+                  >
+                    {busy[s._id] === "heal" ? "Healing…" : "Heal"}
+                  </button>
+                  {notes[s._id] ? (
+                    <small className="console-row-note">{notes[s._id]}</small>
+                  ) : null}
+                </td>
               </tr>
             ))}
           </tbody>

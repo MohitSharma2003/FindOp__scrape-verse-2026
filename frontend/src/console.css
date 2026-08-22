@@ -1,6 +1,6 @@
 .console-subtitle {
   color: #778397;
-  font-size: 12px;
+  font-size: 14px;
   margin: 9px 0 0;
 }
 .console-actions {
@@ -15,7 +15,7 @@
   color: #aeb8c8;
   border-radius: 6px;
   padding: 8px 11px;
-  font: 10px "DM Mono";
+  font: 12px "DM Mono";
 }
 .console-refresh:hover {
   border-color: #766ce5;
@@ -35,7 +35,7 @@
   min-height: 108px;
 }
 .console-stat span {
-  font: 9px "DM Mono";
+  font: 11px "DM Mono";
   color: #778397;
   text-transform: uppercase;
 }
@@ -46,7 +46,7 @@
   margin: 18px 0 4px;
 }
 .console-stat small {
-  font-size: 10px;
+  font-size: 12px;
   color: #68758a;
 }
 .console-health {
@@ -67,10 +67,10 @@
   display: flex;
   gap: 28px;
   color: #8b97a9;
-  font: 10px "DM Mono";
+  font: 12px "DM Mono";
 }
 .health-breakdown b {
-  font-size: 18px;
+  font-size: 20px;
   color: #e5e8ef;
   margin-right: 5px;
 }
@@ -96,10 +96,10 @@
 }
 .console-panel-heading .eyebrow {
   margin: 0 0 7px;
-  font-size: 9px;
+  font-size: 11px;
 }
 .console-panel-heading h2 {
-  font-size: 16px;
+  font-size: 18px;
   margin: 0;
 }
 .console-filter {
@@ -112,10 +112,10 @@
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 11px;
+  font-size: 13px;
 }
 .console-table th {
-  font: 9px "DM Mono";
+  font: 11px "DM Mono";
   text-transform: uppercase;
   color: #68758a;
   padding: 12px 18px;
@@ -138,8 +138,8 @@
 .console-table td small {
   display: block;
   color: #69768a;
-  font-size: 9px;
-  max-width: 190px;
+  font-size: 11px;
+  max-width: 230px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -171,7 +171,7 @@
   margin: 14px 0 8px;
 }
 .console-empty p {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.7;
   color: #788497;
   max-width: 520px;
@@ -206,16 +206,16 @@
   box-shadow: 0 0 10px #ed7e8d;
 }
 .activity-item strong {
-  font-size: 12px;
+  font-size: 14px;
   color: #e4e8f0;
 }
 .activity-item p {
-  font-size: 11px;
+  font-size: 13px;
   color: #7d899d;
   margin: 4px 0 0;
 }
 .activity-item time {
-  font: 10px "DM Mono";
+  font: 12px "DM Mono";
   color: #68758a;
 }
 .healing-events {
@@ -229,7 +229,7 @@
   padding: 17px 0;
   border-bottom: 1px solid #202733;
   color: #8490a2;
-  font-size: 11px;
+  font-size: 13px;
 }
 .healing-event:last-child {
   border: 0;
@@ -253,7 +253,7 @@
   justify-content: space-between;
   padding: 17px 0;
   border-bottom: 1px solid #202733;
-  font-size: 12px;
+  font-size: 14px;
 }
 .system-list span {
   color: #7d899d;
@@ -317,3 +317,12 @@
     margin-top: 5px;
   }
 }
+.console-actions-cell { white-space: nowrap; }
+.console-mini-btn {
+  font: 12.5px "Inter"; padding: 5px 10px; margin-right: 6px;
+  border: 1px solid #2a3242; border-radius: 6px; background: #141a24;
+  color: #cfe3ff; cursor: pointer;
+}
+.console-mini-btn:hover:not(:disabled) { border-color: #3d7bd9; color: #fff; }
+.console-mini-btn:disabled { opacity: 0.5; cursor: default; }
+.console-row-note { display: block; margin-top: 4px; font-size: 12px; color: #8fa3bd; max-width: 230px; white-space: normal; }

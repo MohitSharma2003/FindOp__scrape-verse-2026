@@ -158,7 +158,10 @@ function isRelevant(item: DiscoveryQueryResult, intent: SearchIntent): boolean {
   const candidateUrl = normalizeUrl(item.link ?? item.url);
   if (!candidateUrl || isObviousJunk(candidateUrl, title, description)) return false;
   const typeTerms = intent.type === "other" ? ["opportunity", "program", "application"] : opportunityTerms(intent.type);
-  const keywordMatch = intent.keywords.length === 0 || intent.keywords.some((keyword) => text.includes(keyword.toLowerCase()));
+  // `site:` operators scope the query, not the result text - exclude them
+  // from literal matching so they never reject valid results.
+  const matchableKeywords = intent.keywords.filter((keyword) => !keyword.toLowerCase().startsWith("site:"));
+  const keywordMatch = matchableKeywords.length === 0 || matchableKeywords.some((keyword) => text.includes(keyword.toLowerCase()));
   return keywordMatch && typeTerms.some((term) => text.includes(term));
 }
 

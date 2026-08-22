@@ -184,6 +184,10 @@ export const api = {
   opportunity: (id: string) => request<Opportunity>(`/opportunities/${id}`),
   sources: () => request<Source[]>("/sources"),
   runs: () => request<ScrapeRun[]>("/scrape-runs"),
+  scrapeSource: (id: string) =>
+    request<{ message: string }>(`/sources/${id}/scrape`, { method: "POST" }, 600_000),
+  healSource: (id: string) =>
+    request<{ status?: string }>(`/sources/${id}/heal`, { method: "POST" }, 600_000),
   healing: (id: string) => request<HealingEntry[]>(`/sources/${id}/healing`),
   health: (id: string) => request<unknown>(`/sources/${id}/health`),
   discoverySearch: (req: DiscoverySearchRequest) =>

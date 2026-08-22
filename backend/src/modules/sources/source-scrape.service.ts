@@ -171,7 +171,9 @@ export async function scrapeSource(
       recordsFound: ingestion.recordsFound,
       recordsValid: ingestion.recordsValid,
       recordsRejected: ingestion.recordsRejected,
-      zeroRecordsFailure: false,
+      // A discovery/collector run returning literally zero records is a
+      // zero-records failure: the source is expected to produce opportunities.
+      zeroRecordsFailure: ingestion.recordsFound === 0,
       historicalSuccessfulRuns: history.map((run) => ({
         recordsFound: run.recordsFound,
       })),
@@ -269,11 +271,10 @@ export async function collectDiscoveryRecords(
 
   const intent = {
     type: source.category,
-    // Discovery keywords scope the SERP queries themselves; they stay out of
-    // relevance matching because literal phrases like `site:` or "hackathons
-    // 2026" rarely appear verbatim in result titles/snippets. Category terms
-    // (opportunityTerms) plus the junk filter decide relevance.
-    keywords: [],
+    // Full keywords (incl. `site:` filters) scope the SERP queries. Relevance
+    // matching inside extractCandidates ignores `site:` operators because no
+    // result text contains them literally; category terms decide relevance.
+    keywords: (source.discoveryKeywords ?? []).slice(0, 5),
     mode: "any",
     skills: [],
   } as unknown as SearchIntent;
@@ -288,7 +289,11 @@ export async function collectDiscoveryRecords(
   for (const query of buildDiscoveryQueries(intent)) {
     if (candidateUrls.length >= env.SERP_DISCOVERY_CANDIDATE_LIMIT) break;
     const payload = await discoveryClient.search(query);
-    for (const candidate of extractCandidates(payload, query, intent)) {
+    // Relevance uses category terms + the junk filter only: discovery
+    // keywords (incl. `site:` scopes and date phrases) belong to the query,
+    // never to literal result-text matching.
+    const relevanceIntent = { ...intent, keywords: [] } as SearchIntent;
+    for (const candidate of extractCandidates(payload, query, relevanceIntent)) {
       if (seen.has(candidate.url)) continue;
       seen.add(candidate.url);
       if (candidateUrls.length < env.SERP_DISCOVERY_CANDIDATE_LIMIT) {
