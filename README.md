@@ -1,4 +1,4 @@
-<h3 align="center"><img width="550" height="180" alt="ChatGPT Image " src="https://github.com/user-attachments/assets/390b68f3-6c66-481b-95e7-94994105c23c" />
+<h3 align="center"><img width="450" height="120" alt="ChatGPT Image " src="https://github.com/user-attachments/assets/390b68f3-6c66-481b-95e7-94994105c23c" />
 </h3>
 
 <p align="center">
