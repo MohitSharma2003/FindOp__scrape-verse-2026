@@ -26,9 +26,9 @@
 
 [▶️ Watch the full FindOP demo on YouTube](https://youtu.be/Vk23XVYTbJs)
 
-FindOP is a self-healing opportunity intelligence platform. It continuously discovers public opportunities — hackathons, fellowships, internships, scholarships, grants, jobs, competitions and developer programs — converts inconsistent web data into one validated structure, and keeps data flowing even when websites change and scrapers break.
+FindOP is a self-healing opportunity intelligence platform. It continuously discovers public opportunities hackathons, fellowships, internships, scholarships, grants, jobs, competitions and developer programs converts inconsistent web data into one validated structure, and keeps data flowing even when websites change and scrapers break.
 
-> **FindOP finds opportunities people would otherwise miss — and keeps finding them when the web changes.**
+> **FindOP finds opportunities people would otherwise miss and keeps finding them when the web changes.**
 
 --------
 
@@ -51,38 +51,6 @@ FindOP is a self-healing opportunity intelligence platform. It continuously disc
 
 
 
-<!-- ------------------------------------------------------------------
-     Add product screenshots below. Recommended images to capture:
-
-       docs/images/home.png            – Landing page
-       docs/images/demo-sandbox.png    – Live Demo Sandbox mid-scrape
-       docs/images/demo-healed.png     – Break → Heal verdict timeline
-       docs/images/discover.png        – Discover feed
-       docs/images/console.png         – Operator console (sources/healing)
-
-     Uncomment a block and drop the image at the shown path.
-------------------------------------------------------------------- -->
-
-<!--
-<p align="center">
-  <img src="docs/images/home.png" alt="FindOP landing page" width="820" />
-  <br/><em>Landing page</em>
-</p>
--->
-
-<!--
-<p align="center">
-  <img src="docs/images/demo-sandbox.png" alt="Live Demo Sandbox" width="820" />
-  <br/><em>The Live Demo Sandbox scraping any website in real time</em>
-</p>
--->
-
-<!--
-<p align="center">
-  <img src="docs/images/console.png" alt="Operator console" width="820" />
-  <br/><em>Operator console — sources, runs and self-healing</em>
-</p>
--->
 
 
 ----------
@@ -115,7 +83,7 @@ FindOP answers both.
 
 ### Live Demo Sandbox
 
-The flagship demo experience: paste **any** website, pick an opportunity category, and watch FindOP discover, extract, classify and verify records in real time — then press **Break** to poison the scraper's configuration and watch the self-healing pipeline diagnose, repair and recover it.
+The flagship demo experience: paste **any** website, pick an opportunity category, and watch FindOP discover, extract, classify and verify records in real time then press **Break** to poison the scraper's configuration and watch the self-healing pipeline diagnose, repair and recover it.
 
 ```
 Scrape ──► Discover ──► Extract ──► Classify ──► Verify ──► HEALTHY
@@ -137,10 +105,10 @@ Saved scrapers can be promoted into the production Sources registry with one cli
 ┌───────────────────────────── FindOP Platform ─────────────────────────────┐
 │                                                                           │
 │   React Frontend ──► Express API ──► Services ──► MongoDB                 │
-│        (user app +          │              │                               │
-│         operator console)   │              └── Opportunity index,           │
-│                             │                  sources, scrape runs,       │
-│                             ▼                  health & healing state      │
+│        (user app +          │              │                              │
+│         operator console)   │              └── Opportunity index,         │
+│                             │                  sources, scrape runs,      │
+│                             ▼                  health & healing state     │
 │                     Bright Data APIs                                      │
 │                (SERP search · extraction ·                                │
 │                      healing collector)                                   │
