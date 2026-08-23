@@ -36,6 +36,8 @@ const SERP_SOURCES = [
   { name: "Google Summer of Code", url: "https://summerofcode.withgoogle.com/", domain: "summerofcode.withgoogle.com", category: "program", keywords: ["site:summerofcode.withgoogle.com", "open source program"], frequencyMinutes: 720 },
   { name: "Outreachy Open-Source Internships", url: "https://www.outreachy.org/", domain: "outreachy.org", category: "internship", keywords: ["site:outreachy.org", "outreachy internship"], frequencyMinutes: 720 },
   { name: "NLnet Foundation Grants", url: "https://nlnet.nl/funding/", domain: "nlnet.nl", category: "grant", keywords: ["site:nlnet.nl", "funding open source"], frequencyMinutes: 1440 },
+  { name: "We Work Remotely Jobs", url: "https://weworkremotely.com/", domain: "weworkremotely.com", category: "job", keywords: ["site:weworkremotely.com", "remote job"], frequencyMinutes: 360 },
+  { name: "MLH Fellowship Programs", url: "https://fellowship.mlh.io/", domain: "fellowship.mlh.io", category: "program", keywords: ["site:fellowship.mlh.io", "mlh fellowship program"], frequencyMinutes: 1440 },
 ] as const;
 
 async function main(): Promise<void> {
