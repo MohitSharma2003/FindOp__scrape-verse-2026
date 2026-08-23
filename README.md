@@ -74,12 +74,12 @@ FindOP answers both.
 
 | Capability | What it means |
 |---|---|
-| 🔎 **Discover** | SERP-driven discovery finds opportunity pages across any public website — not just a fixed source list |
-| 🧩 **Structure** | Raw web data is normalized into one canonical opportunity model (title, organization, category, deadline, location, links…) |
-| ✅ **Validate** | Every record passes validation, deduplication and category classification before it enters the index |
-| 🩹 **Self-heal** | Health monitoring detects failing sources, diagnoses what changed, repairs the scraper via Bright Data, re-scrapes and verifies recovery |
-| 🎯 **Match** | Search intent (category, keywords, location, mode, date window) drives filtering and ranking so users see what fits them |
-| 🖥 **Observe** | An operator console exposes sources, scrape runs, validation results and healing timelines |
+|  **Discover** | SERP-driven discovery finds opportunity pages across any public website — not just a fixed source list |
+|  **Structure** | Raw web data is normalized into one canonical opportunity model (title, organization, category, deadline, location, links…) |
+|  **Validate** | Every record passes validation, deduplication and category classification before it enters the index |
+|  **Self-heal** | Health monitoring detects failing sources, diagnoses what changed, repairs the scraper via Bright Data, re-scrapes and verifies recovery |
+|  **Match** | Search intent (category, keywords, location, mode, date window) drives filtering and ranking so users see what fits them |
+|  **Observe** | An operator console exposes sources, scrape runs, validation results and healing timelines |
 
 ### Live Demo Sandbox
 
@@ -102,17 +102,17 @@ Saved scrapers can be promoted into the production Sources registry with one cli
 ## Architecture
 
 ```text
-┌───────────────────────────── FindOP Platform ─────────────────────────────┐
+┌───────────────────────────── FindOP Platform ────────────────────┐
 │                                                                           │
-│   React Frontend ──► Express API ──► Services ──► MongoDB                 │
-│        (user app +          │              │                              │
-│         operator console)   │              └── Opportunity index,         │
-│                             │                  sources, scrape runs,      │
-│                             ▼                  health & healing state     │
+│   React Frontend ──► Express API ──► Services ──► MongoDB               │
+│        (user app +          │              │                             │
+│         operator console)   │              └── Opportunity index,        │
+│                             │                  sources, scrape runs,     │
+│                             ▼                  health & healing state    │
 │                     Bright Data APIs                                      │
 │                (SERP search · extraction ·                                │
 │                      healing collector)                                   │
-└───────────────────────────────────────────────────────────────────────────┘
+└─────────────────────────────────────────────────── ────────────┘
 ```
 
 **Pipeline:** `Source → SERP discovery → parallel extraction → validation → classification → ingestion → opportunity index → health monitoring → bounded self-healing`
