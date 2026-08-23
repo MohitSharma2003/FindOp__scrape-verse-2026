@@ -22,7 +22,7 @@
 ## About
 #### 🎥 Demo Video
 
-[![FindOP Demo](https://img.youtube.com/vi/Vk23XVYTbJs/maxresdefault.jpg)](https://youtu.be/Vk23XVYTbJs)
+
 
 [▶️ Watch the full FindOP demo on YouTube](https://youtu.be/Vk23XVYTbJs)
 
