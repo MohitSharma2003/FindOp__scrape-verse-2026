@@ -3,7 +3,7 @@
 
 <p align="center">
   <strong>The opportunity layer that keeps looking.</strong><br/>
-  Discover opportunities across the web — and keep discovering them even when the web changes.
+  Discover opportunities across the web and keep discovering them even when the web changes.
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
 </p>
 
 
----
+---------
 
 ## About
 
@@ -25,23 +25,23 @@ FindOP is a self-healing opportunity intelligence platform. It continuously disc
 
 > **FindOP finds opportunities people would otherwise miss — and keeps finding them when the web changes.**
 
----
+--------
 
 ## Screenshots
 
-## Landing Page
+### Landing Page
 <img width="1919" height="967" alt="image" src="https://github.com/user-attachments/assets/cf5d96ce-9e8e-4654-976a-12dda03e5b91" />
 
 
 
-## Opportunity Section
+### Opportunity Section
 <img width="1919" height="970" alt="image" src="https://github.com/user-attachments/assets/0895b7c4-7313-474b-b5c9-bc1b6f8a781e" />
 
 
-## Console
+### Console
 <img width="1919" height="973" alt="image" src="https://github.com/user-attachments/assets/d28419ce-b157-4d7f-8f84-25ee056c12ec" />
 
-## Self-Healing
+### Self-Healing
 <img width="1919" height="969" alt="image" src="https://github.com/user-attachments/assets/8db5804f-68fe-40b0-9a09-e3d50f2e3072" />
 
 
@@ -79,9 +79,8 @@ FindOP is a self-healing opportunity intelligence platform. It continuously disc
 </p>
 -->
 
-<p align="center"><em>📸 Screenshots coming soon.</em></p>
 
----
+----------
 
 ## The Problem
 
