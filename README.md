@@ -26,21 +26,23 @@ FindOP is a self-healing opportunity intelligence platform. It continuously disc
 ---
 
 ## Screenshots
-<img width="1919" height="967" alt="image" src="https://github.com/user-attachments/assets/cf5d96ce-9e8e-4654-976a-12dda03e5b91" />
 
 ## Landing Page
+<img width="1919" height="967" alt="image" src="https://github.com/user-attachments/assets/cf5d96ce-9e8e-4654-976a-12dda03e5b91" />
 
-<img width="1919" height="970" alt="image" src="https://github.com/user-attachments/assets/0895b7c4-7313-474b-b5c9-bc1b6f8a781e" />
+
 
 ## Opportunity Section
+<img width="1919" height="970" alt="image" src="https://github.com/user-attachments/assets/0895b7c4-7313-474b-b5c9-bc1b6f8a781e" />
 
-<img width="1919" height="973" alt="image" src="https://github.com/user-attachments/assets/d28419ce-b157-4d7f-8f84-25ee056c12ec" />
 
 ## Console
-
-<img width="1919" height="969" alt="image" src="https://github.com/user-attachments/assets/8db5804f-68fe-40b0-9a09-e3d50f2e3072" />
+<img width="1919" height="973" alt="image" src="https://github.com/user-attachments/assets/d28419ce-b157-4d7f-8f84-25ee056c12ec" />
 
 ## Self-Healing
+<img width="1919" height="969" alt="image" src="https://github.com/user-attachments/assets/8db5804f-68fe-40b0-9a09-e3d50f2e3072" />
+
+
 
 <!-- ------------------------------------------------------------------
      Add product screenshots below. Recommended images to capture:
