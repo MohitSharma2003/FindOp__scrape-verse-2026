@@ -1,5 +1,5 @@
-<h1 align="center"><img width="1049" height="276" alt="ChatGPT Image " src="https://github.com/user-attachments/assets/390b68f3-6c66-481b-95e7-94994105c23c" />
-</h1>
+<h3 align="center"><img width="1049" height="276" alt="ChatGPT Image " src="https://github.com/user-attachments/assets/390b68f3-6c66-481b-95e7-94994105c23c" />
+</h3>
 
 <p align="center">
   <strong>The opportunity layer that keeps looking.</strong><br/>
