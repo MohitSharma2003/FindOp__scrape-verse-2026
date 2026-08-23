@@ -1,4 +1,5 @@
-<h1 align="center">FindOP</h1>
+<h1 align="center"><img width="679" height="367" alt="ChatGPT_Image_Aug_23__2026__03_31_38_PM-removebg-preview" src="https://github.com/user-attachments/assets/92c9e7a0-21d8-4661-bf5d-a5fdc0a485d2" />
+</h1>
 
 <p align="center">
   <strong>The opportunity layer that keeps looking.</strong><br/>
