@@ -100,7 +100,7 @@ Saved scrapers can be promoted into the production Sources registry with one cli
 ---
 
 ## Architecture
-<img width="720" height="360" alt="file_00000000d4388208813595de3841201e" src="https://github.com/user-attachments/assets/bfe2affb-01f0-4fac-8271-5f4dfaf75038" />
+<img width="820" height="260" alt="file_00000000d4388208813595de3841201e" src="https://github.com/user-attachments/assets/bfe2affb-01f0-4fac-8271-5f4dfaf75038" />
 
 
 **Pipeline:** `Source → SERP discovery → parallel extraction → validation → classification → ingestion → opportunity index → health monitoring → bounded self-healing`
