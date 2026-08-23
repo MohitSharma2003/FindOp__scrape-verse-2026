@@ -6,13 +6,14 @@
   Discover opportunities across the web — and keep discovering them even when the web changes.
 </p>
 
+<p align="center">
 
-
-<p align="center"> [![Scrape-Verse 2026](https://img.shields.io/badge/Scrape--Verse-2026-7C5CFC?style=for-the-badge)](https://www.wemakedevs.org/hackathons/scrape-verse)
+ [![Scrape-Verse 2026](https://img.shields.io/badge/Scrape--Verse-2026-7C5CFC?style=for-the-badge)](https://www.wemakedevs.org/hackathons/scrape-verse)
 [![Bright Data](https://img.shields.io/badge/Powered%20by-Bright%20Data-1677FF?style=for-the-badge)](https://brightdata.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+
 </p>
 
 
