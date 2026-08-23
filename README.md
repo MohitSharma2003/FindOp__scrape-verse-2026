@@ -21,7 +21,7 @@
 
 ## About
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/Vk23XVYTbJs" frameborder="0" allowfullscreen></iframe>
+https://www.youtube.com/embed/Vk23XVYTbJs
 
 FindOP is a self-healing opportunity intelligence platform. It continuously discovers public opportunities — hackathons, fellowships, internships, scholarships, grants, jobs, competitions and developer programs — converts inconsistent web data into one validated structure, and keeps data flowing even when websites change and scrapers break.
 
