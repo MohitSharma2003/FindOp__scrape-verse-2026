@@ -32,6 +32,11 @@ function getTransport(): nodemailer.Transporter {
         user: env.SMTP_USER,
         pass: env.SMTP_PASS,
       },
+      // Fail fast when the relay is unreachable (e.g. a host blocking
+      // outbound SMTP) instead of letting requests hang for minutes.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
     });
   }
   return cachedTransport;
