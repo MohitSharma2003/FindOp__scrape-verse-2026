@@ -22,6 +22,14 @@ export function isMailerConfigured(): boolean {
   return Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
 }
 
+/** Masked one-liner for startup logs — proves the SMTP env vars arrived. */
+export function describeMailerConfig(): string {
+  if (!isMailerConfigured()) return "not configured";
+  const user = env.SMTP_USER ?? "";
+  const pass = env.SMTP_PASS ?? "";
+  return `host=${env.SMTP_HOST} port=${env.SMTP_PORT} user=${user.slice(0, 3)}***${user.slice(-9)} pass=set(${pass.length} chars)`;
+}
+
 function getTransport(): nodemailer.Transporter {
   if (!cachedTransport) {
     cachedTransport = nodemailer.createTransport({
