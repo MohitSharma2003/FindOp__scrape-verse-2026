@@ -10,7 +10,7 @@ import {
   signAuthToken,
   verifyPassword,
 } from "./auth.utils.js";
-import { renderOtpEmail, sendMail, type MailSender } from "./mailer.js";
+import { renderOtpEmail, renderWelcomeEmail, sendMail, type MailSender } from "./mailer.js";
 import { User } from "./user.model.js";
 import { AppError } from "../../middleware/error-handler.js";
 
@@ -234,6 +234,18 @@ export function createAuthService(dependencies: AuthServiceDependencies = {}) {
     user.isVerified = true;
     user.otp = null;
     await user.save();
+
+    // Account just became active: greet the user. Delivery problems must not
+    // fail the verification itself, so this is best-effort.
+    try {
+      const mail = renderWelcomeEmail(user.name);
+      await deliverMail({ to: user.email, subject: mail.subject, html: mail.html });
+    } catch (error) {
+      console.error(
+        "[auth] welcome email failed:",
+        error instanceof Error ? error.message : error,
+      );
+    }
 
     return {
       token: signAuthToken({ sub: String(user._id ?? user.email), email: user.email }),

@@ -183,8 +183,11 @@ export type OpportunityPage = {
   hasMore: boolean;
 };
 
+/* ── Token storage ───────────────────────────────────────────────────────── */
+
 const TOKEN_STORAGE_KEY = "findop-token";
 
+/** localStorage wrapper that never throws (private mode, quota, etc.). */
 export const authToken = {
   get(): string | null {
     try {
@@ -213,10 +216,14 @@ const API_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:5000/api"
 ).replace(/\/$/, "");
 
-/** Browser entry point for social sign-in; the backend drives the redirect flow. */
+// The OAuth redirect flow is currently not exposed in the UI (buttons were
+// removed until provider apps are registered). The backend routes stay live,
+// so this helper is kept around for when the buttons come back.
 export function oauthUrl(provider: "google" | "github", next: string): string {
   return `${API_URL}/auth/oauth/${provider}?next=${encodeURIComponent(next)}`;
 }
+
+/** Error thrown for any non-success response or network failure. */
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -228,6 +235,10 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Single fetch wrapper for the whole app: JSON in/out, auth header, timeout,
+ * and normalised errors. Every endpoint below goes through this.
+ */
 async function request<T>(
   path: string,
   init: RequestInit = {},
@@ -278,6 +289,8 @@ async function request<T>(
     window.clearTimeout(timeout);
   }
 }
+
+/* ── Endpoints ───────────────────────────────────────────────────────────── */
 
 export const api = {
   opportunities: () => request<Opportunity[]>("/opportunities"),

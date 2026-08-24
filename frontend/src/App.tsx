@@ -11,14 +11,17 @@ import {
   Saved,
 } from "./pages/Opportunities";
 
+// Hand-rolled pathname routing: each branch renders one page. There is no
+// client-side router — navigation is a plain full-page load.
 export function App() {
   const path = window.location.pathname.replace(/\/$/, "") || "/";
 
   if (path === "/login") return <AuthPage />;
   if (path === "/signup") return <AuthPage signup />;
+  // Landing pad after a Google/GitHub round-trip (reads the #token fragment).
   if (path === "/oauth/callback") return <OAuthCallback />;
   if (path === "/console/healing") return <HealingConsolePage />;
-if (path === "/demo") return <LiveDemoPage />;
+  if (path === "/demo") return <LiveDemoPage />;
   if (path.startsWith("/console")) return <ConsolePage />;
   if (path === "/") return <Landing />;
   if (path.startsWith("/opportunities/") && path.split("/")[2]) {

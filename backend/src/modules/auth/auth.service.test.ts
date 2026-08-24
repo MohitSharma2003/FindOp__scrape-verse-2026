@@ -175,7 +175,7 @@ describe("auth service", () => {
         lastSentAt: new Date(),
       },
     });
-    const { service } = withStubs({ findOneResult: user });
+    const { service, sentMail } = withStubs({ findOneResult: user });
 
     const result = await service.verifyOtp({ email: "ada@example.com", code });
     assert.equal(result.user.email, "ada@example.com");
@@ -185,6 +185,11 @@ describe("auth service", () => {
     });
     assert.equal(user.isVerified, true);
     assert.equal(user.otp, null);
+    // A successful verification activates the account and triggers the
+    // account-creation ("welcome") email.
+    const lastMail = sentMail[sentMail.length - 1];
+    assert.ok(lastMail);
+    assert.match(lastMail.subject, /Welcome/);
   });
 
   it("verifyOtp rejects a wrong code and counts the attempt", async () => {

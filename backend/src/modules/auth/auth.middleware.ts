@@ -3,11 +3,17 @@ import type { NextFunction, Request, Response } from "express";
 import { AppError } from "../../middleware/error-handler.js";
 import { verifyAuthToken } from "./auth.utils.js";
 
+/** Request enriched by `requireAuth` once a Bearer token checks out. */
 export interface AuthedRequest extends Request {
   userId?: string;
   userEmail?: string;
 }
 
+/**
+ * Express guard for routes that need a signed-in user. Reads the standard
+ * Authorization header, validates the JWT and copies the identity onto the
+ * request. Sends a JSON error itself when the token is missing/invalid.
+ */
 export function requireAuth(
   req: AuthedRequest,
   res: Response,

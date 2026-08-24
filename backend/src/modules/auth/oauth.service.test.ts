@@ -63,6 +63,7 @@ describe("oauth account service", () => {
       passwordHash: string;
       isVerified: boolean;
     }[] = [];
+    const welcomed: { name: string; email: string }[] = [];
 
     const service = createOauthAccountService({
       findOneUser: async () => existing,
@@ -70,9 +71,12 @@ describe("oauth account service", () => {
         created.push(data);
         return stubUser({ ...data, _id: "new-user" });
       },
+      sendWelcome: async (recipient) => {
+        welcomed.push(recipient);
+      },
     });
 
-    return { service, created };
+    return { service, created, welcomed };
   }
 
   const profile = {
@@ -83,7 +87,7 @@ describe("oauth account service", () => {
   };
 
   it("creates a new verified account for a first-time provider sign-in", async () => {
-    const { service, created } = withStubs(null);
+    const { service, created, welcomed } = withStubs(null);
 
     const result = await service.upsertOAuthUser(profile);
 
@@ -96,6 +100,7 @@ describe("oauth account service", () => {
     assert.notEqual(firstCreated.passwordHash.length, 0);
     assert.equal(result.user.email, "ada@example.com");
     assert.match(result.token, /\./);
+    assert.deepEqual(welcomed, [{ name: "Ada Lovelace", email: "ada@example.com" }]);
   });
 
   it("verifies an existing unverified password account on provider proof", async () => {

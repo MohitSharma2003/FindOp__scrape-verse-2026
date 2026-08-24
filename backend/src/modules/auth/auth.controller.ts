@@ -16,6 +16,10 @@ const INVALID_BODY = {
   error: { code: "INVALID_AUTH_INPUT", message: "Invalid request payload" },
 } as const;
 
+/**
+ * Step 1 of sign-up: store the account (unverified) and email a code.
+ * The user only becomes a real account after verifyOtp succeeds.
+ */
 export async function signup(req: Request, res: Response): Promise<void> {
   const parsed = signupSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -85,6 +89,7 @@ export async function login(req: Request, res: Response): Promise<void> {
   res.status(200).json({ success: true, data: result });
 }
 
+/** Who am I? Used by the frontend to restore a session on page load. */
 export async function me(
   req: Request & { userId?: string },
   res: Response,

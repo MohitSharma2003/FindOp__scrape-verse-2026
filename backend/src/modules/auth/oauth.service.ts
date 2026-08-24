@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 
 import { env, jwtSecret } from "../../config/env.js";
 import { hashPassword, signAuthToken } from "./auth.utils.js";
+import { renderWelcomeEmail, sendMail } from "./mailer.js";
 import { randomBytes } from "node:crypto";
 import { User } from "./user.model.js";
 import type { AuthUserRecord } from "./auth.service.js";
@@ -20,6 +21,8 @@ interface OAuthServiceDependencies {
     passwordHash: string;
     isVerified: boolean;
   }) => Promise<AuthUserRecord>;
+  /** Injectable so tests never touch SMTP. */
+  sendWelcome?: (recipient: { name: string; email: string }) => Promise<void>;
 }
 
 /**
@@ -90,15 +93,23 @@ export function createOauthAccountService(
       passwordHash: string;
       isVerified: boolean;
     }) => (await User.create({ email, name, passwordHash, isVerified })) as unknown as AuthUserRecord);
+  const sendWelcome =
+    dependencies.sendWelcome ??
+    (async (recipient: { name: string; email: string }) => {
+      const mail = renderWelcomeEmail(recipient.name);
+      await sendMail({ to: recipient.email, subject: mail.subject, html: mail.html });
+    });
 
   async function upsertOAuthUser(
     profile: OAuthProfile,
   ): Promise<OAuthSessionResult> {
     let user = await findUser(profile.email);
+    let isNewAccount = false;
 
     if (!user) {
       // Random scrypt hash no one can match: password login stays impossible
       // for provider-created accounts.
+      isNewAccount = true;
       const passwordHash = await hashPassword(randomSecret());
       user = await createUser({
         email: profile.email,
@@ -110,6 +121,19 @@ export function createOauthAccountService(
       // The provider proved ownership of this email; complete verification.
       user.isVerified = true;
       await user.save();
+    }
+
+    // First-time provider sign-up: greet the user. Best-effort — a mail
+    // outage must not block the sign-in redirect.
+    if (isNewAccount) {
+      try {
+        await sendWelcome({ name: user.name, email: user.email });
+      } catch (error) {
+        console.error(
+          "[auth] welcome email failed:",
+          error instanceof Error ? error.message : error,
+        );
+      }
     }
 
     return {

@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 
 import { AppError } from "../../middleware/error-handler.js";
 import { isProviderConfigured } from "./oauth.client.js";
@@ -18,6 +18,7 @@ import {
 
 const router = Router();
 
+/** Only these two providers are wired up; anything else is a 404. */
 function providerOf(req: { params: { provider?: string } }): OAuthProvider {
   const value = req.params.provider;
   if (value === "google" || value === "github") return value;
@@ -25,8 +26,8 @@ function providerOf(req: { params: { provider?: string } }): OAuthProvider {
 }
 
 /**
- * Browser-facing endpoints: they redirect (302) rather than return JSON.
- * `?next=` preserves the page the user originally wanted.
+ * Step 1 of the sign-in dance: bounce the browser to Google/GitHub.
+ * `state` carries our CSRF token + where to send the user afterwards.
  */
 router.get("/:provider", (req, res) => {
   const provider = providerOf(req);
@@ -47,6 +48,11 @@ router.get("/:provider", (req, res) => {
   );
 });
 
+/**
+ * Step 2: the provider sends the user back here with ?code&state. We swap
+ * the code for a profile, upsert the account, and hand the frontend its JWT.
+ * Everything lands back on the SPA via hash fragments (#token / #error).
+ */
 router.get("/:provider/callback", async (req, res) => {
   const provider = providerOf(req);
   const frontend = frontendCallbackUrl();
@@ -91,7 +97,8 @@ router.get("/:provider/callback", async (req, res) => {
   }
 });
 
-function redirectWithError(res: import("express").Response, message: string, frontend = frontendCallbackUrl()): void {
+/** Send the browser back to the app with a human-readable error fragment. */
+function redirectWithError(res: Response, message: string, frontend = frontendCallbackUrl()): void {
   res.redirect(`${frontend}#error=${encodeURIComponent(message)}`);
 }
 
