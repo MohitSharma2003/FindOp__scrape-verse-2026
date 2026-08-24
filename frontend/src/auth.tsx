@@ -7,25 +7,24 @@ import {
   useState,
 } from "react";
 
-export type AuthUser = { name: string; email: string };
+import { api, ApiError, authToken, type AuthUserPayload } from "./api";
+
+export type AuthUser = AuthUserPayload;
 type AuthContextValue = {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (name: string, email: string, password: string) => Promise<void>;
+  signup: (name: string, email: string, password: string) => Promise<string>;
+  verifyOtp: (email: string, code: string) => Promise<void>;
+  resendOtp: (email: string) => Promise<void>;
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-const STORAGE_KEY = "findop-dev-auth";
 
-function readUser(): AuthUser | null {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-  } catch {
-    return null;
-  }
+function readToken(): string | null {
+  return authToken.get();
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -33,8 +32,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setLoading] = useState(true);
 
   useEffect(() => {
-    setUser(readUser());
-    setLoading(false);
+    let active = true;
+
+    if (!readToken()) {
+      setLoading(false);
+      return;
+    }
+
+    // Restore the session from the stored JWT; drop it when invalid/expired.
+    api
+      .me()
+      .then(({ user: restored }) => {
+        if (active) setUser(restored);
+      })
+      .catch((error) => {
+        if (error instanceof ApiError && [401, 403, 404].includes(error.status)) {
+          authToken.clear();
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -47,21 +69,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error("Email and password are required.");
         }
 
-        const next = { name: email.split("@")[0], email };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        setUser(next);
+        const session = await api.login({ email, password });
+        authToken.set(session.token);
+        setUser(session.user);
       },
       signup: async (name, email, password) => {
         if (!name || !email || !password) {
           throw new Error("Name, email and password are required.");
         }
 
-        const next = { name, email };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        setUser(next);
+        // Account is created unverified — an OTP code is emailed to the user.
+        // The session only starts after verifyOtp() succeeds.
+        const result = await api.signup({ name, email, password });
+        return result.email;
+      },
+      verifyOtp: async (email, code) => {
+        if (!email || !code) {
+          throw new Error("Enter the code from your email.");
+        }
+
+        const session = await api.verifyOtp({ email, code });
+        authToken.set(session.token);
+        setUser(session.user);
+      },
+      resendOtp: async (email) => {
+        await api.resendOtp(email);
       },
       logout: () => {
-        localStorage.removeItem(STORAGE_KEY);
+        authToken.clear();
         setUser(null);
       },
     }),

@@ -284,6 +284,12 @@ export function Preferences() {
   );
   const toggle = (x: string) =>
     setSelected((s) => (s.includes(x) ? s.filter((y) => y !== x) : [...s, x]));
+  const [justSaved, setJustSaved] = useState(false);
+  const save = () => {
+    localStorage.setItem("findop-preferences", JSON.stringify(selected));
+    setJustSaved(true);
+    window.setTimeout(() => setJustSaved(false), 2500);
+  };
   return (
     <UserShell>
       <main className="page preferences">
@@ -324,16 +330,14 @@ export function Preferences() {
               </button>
             ))}
           </div>
-          <Button
-            onClick={() => {
-              localStorage.setItem(
-                "findop-preferences",
-                JSON.stringify(selected),
-              );
-            }}
-          >
-            Update preferences
-          </Button>
+          <div className="prefs-actions">
+            <Button onClick={save}>Update preferences</Button>
+            {justSaved && (
+              <span className="save-flash" role="status">
+                ✓ Preferences updated
+              </span>
+            )}
+          </div>
         </Card>
       </main>
     </UserShell>

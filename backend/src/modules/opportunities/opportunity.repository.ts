@@ -13,6 +13,24 @@ export async function findAllOpportunities() {
   return Opportunity.find().sort({ createdAt: -1 });
 }
 
+export interface OpportunityPageResult {
+  items: Awaited<ReturnType<typeof Opportunity.find>>;
+  total: number;
+}
+
+/** Newest-first page of the index; `skip`/`limit` power incremental "show more" loading. */
+export async function findOpportunitiesPage(
+  limit: number,
+  skip: number,
+): Promise<OpportunityPageResult> {
+  const [items, total] = await Promise.all([
+    Opportunity.find().sort({ createdAt: -1 }).skip(skip).limit(limit),
+    Opportunity.countDocuments(),
+  ]);
+
+  return { items, total };
+}
+
 export async function createOpportunity(
   data: createOpportunityInput,
 ) {

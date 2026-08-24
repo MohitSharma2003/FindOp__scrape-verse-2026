@@ -1,23 +1,42 @@
 import type { Request, Response } from "express";
 import mongoose from "mongoose";
+import { z } from "zod";
 
 import { createOpportunitySchema } from "./opportunity.schema.js";
 import {
+  OPPORTUNITY_PAGE_SIZE,
   createOpportunityService,
   getAllOpportunities,
   getOpportunityById,
+  getOpportunityPage,
 } from "./opportunity.service.js";
 
+const paginationQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  offset: z.coerce.number().int().min(0).max(100000).optional(),
+});
+
 export async function getOpportunities(
-  _req: Request,
+  req: Request,
   res: Response,
 ): Promise<void> {
-  const opportunities = await getAllOpportunities();
+  const parsed = paginationQuerySchema.safeParse(req.query);
 
-  res.status(200).json({
-    success: true,
-    data: opportunities,
-  });
+  // Legacy behaviour: no pagination params -> full array (Saved/Deadlines rely on it).
+  if (
+    !parsed.success ||
+    (!("limit" in parsed.data) && !("offset" in parsed.data))
+  ) {
+    const opportunities = await getAllOpportunities();
+    res.status(200).json({ success: true, data: opportunities });
+    return;
+  }
+
+  const limit = parsed.data.limit ?? OPPORTUNITY_PAGE_SIZE;
+  const offset = parsed.data.offset ?? 0;
+  const page = await getOpportunityPage(limit, offset);
+
+  res.status(200).json({ success: true, data: page });
 }
 
 export async function createOpportunity(

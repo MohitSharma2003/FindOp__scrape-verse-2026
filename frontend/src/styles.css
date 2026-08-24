@@ -1420,3 +1420,38 @@ td small {
     padding: 26px;
   }
 }
+
+/* ── Incremental index loading ("Show more") ─────────────────────────────── */
+.show-more-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 28px 0 8px;
+}
+.show-more {
+  min-width: 220px;
+}
+
+/* ── Preferences save feedback ─────────────────────────────────────────── */
+.prefs-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+.save-flash {
+  color: #5fd39a;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  animation: save-flash-in 0.25s ease;
+}
+@keyframes save-flash-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

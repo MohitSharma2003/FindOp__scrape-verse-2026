@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { api, Opportunity } from "../api";
 import { useData } from "../hooks/useData";
 import {
@@ -18,13 +18,22 @@ type DiscoveryState = {
   meta?: import("../api").DiscoverySearchMeta;
   error?: string;
 };
+
+/** Tiles shown per page before the "Show more" button loads the next batch. */
+const PAGE_SIZE = 15;
+
 export function OpportunityList({
   title = "Discover opportunities",
 }: {
   title?: string;
 }) {
-  const index = useData(api.opportunities);
   const stats = useData(api.indexStats);
+  const [items, setItems] = useState<Opportunity[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [indexLoading, setIndexLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [indexError, setIndexError] = useState("");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [location, setLocation] = useState("");
@@ -33,6 +42,47 @@ export function OpportunityList({
     status: "idle",
     items: [],
   });
+
+  const loadPage = async (offset: number) => {
+    const page = await api.opportunitiesPage(PAGE_SIZE, offset);
+    return page;
+  };
+
+  useEffect(() => {
+    let active = true;
+    setIndexLoading(true);
+    setIndexError("");
+    loadPage(0)
+      .then((page) => {
+        if (!active) return;
+        setItems(page.items);
+        setTotal(page.total);
+        setHasMore(page.hasMore);
+      })
+      .catch((e: Error) => active && setIndexError(e.message))
+      .finally(() => {
+        if (active) setIndexLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const showMore = async () => {
+    if (!items || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await loadPage(items.length);
+      setItems((prev) => [...(prev ?? []), ...page.items]);
+      setTotal(page.total);
+      setHasMore(page.hasMore);
+    } catch (e) {
+      setIndexError(e instanceof Error ? e.message : "Could not load more");
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   const categories = [
     "all",
     "hackathon",
@@ -46,7 +96,7 @@ export function OpportunityList({
   ];
 
   const searching = search.status === "loading";
-  const source = search.status === "idle" ? index.data || [] : search.items;
+  const source = search.status === "idle" ? items || [] : search.items;
   const data = useMemo(
     () =>
       source.filter(
@@ -60,7 +110,7 @@ export function OpportunityList({
   );
 
   const runSearch = async () => {
-    setSearch({ status: "loading", items: index.data || [] });
+    setSearch({ status: "loading", items: items || [] });
     try {
       const res = await api.discoverySearch({
         query: query.trim(),
@@ -83,7 +133,7 @@ export function OpportunityList({
     } catch (e) {
       setSearch({
         status: "error",
-        items: index.data || [],
+        items: items || [],
         error: e instanceof Error ? e.message : "Search failed",
       });
     }
@@ -209,7 +259,7 @@ export function OpportunityList({
             indexed results.
           </p>
         )}
-        {index.loading && search.status === "idle" ? (
+        {indexLoading && search.status === "idle" ? (
           <div className="opp-grid">
             {[1, 2, 3].map((x) => (
               <Card key={x}>
@@ -218,22 +268,37 @@ export function OpportunityList({
               </Card>
             ))}
           </div>
-        ) : index.error && search.status === "idle" ? (
-          <ErrorState message={index.error} retry={index.retry} />
+        ) : indexError && search.status === "idle" && !items ? (
+          <ErrorState message={indexError} retry={() => window.location.reload()} />
         ) : data.length ? (
-          <div className="opp-grid">
-            {data.map((x) => (
-              <OpportunityCard
-                key={x._id}
-                item={x}
-                match={
-                  search.status === "done"
-                    ? search.matches?.[x._id]
-                    : undefined
-                }
-              />
-            ))}
-          </div>
+          <>
+            <div className="opp-grid">
+              {data.map((x) => (
+                <OpportunityCard
+                  key={x._id}
+                  item={x}
+                  match={
+                    search.status === "done"
+                      ? search.matches?.[x._id]
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+            {search.status === "idle" && hasMore && (
+              <div className="show-more-wrap">
+                <button
+                  className="button ghost show-more"
+                  disabled={loadingMore}
+                  onClick={() => void showMore()}
+                >
+                  {loadingMore
+                    ? "Loading…"
+                    : `Show more (${items?.length ?? 0} of ${total})`}
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <EmptyState
             title={

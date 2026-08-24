@@ -1,4 +1,4 @@
-﻿import { AuthPage, Protected } from "./pages/Auth";
+﻿import { AuthPage, OAuthCallback, Protected } from "./pages/Auth";
 import { ConsolePage, HealingConsolePage } from "./pages/Console";
 import { OpportunityList } from "./pages/Discover";
 import { Landing } from "./pages/Home";
@@ -16,6 +16,7 @@ export function App() {
 
   if (path === "/login") return <AuthPage />;
   if (path === "/signup") return <AuthPage signup />;
+  if (path === "/oauth/callback") return <OAuthCallback />;
   if (path === "/console/healing") return <HealingConsolePage />;
 if (path === "/demo") return <LiveDemoPage />;
   if (path.startsWith("/console")) return <ConsolePage />;

@@ -130,6 +130,7 @@ export function ErrorState({
 }
 export function UserNav() {
   const { user, logout } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <header className="topbar">
       <a href="/">
@@ -146,10 +147,47 @@ export function UserNav() {
       </nav>
       {user ? (
         <div className="user-menu">
-          <a className="avatar" href="/profile" aria-label="Open profile">
-            {user.name.slice(0, 2).toUpperCase()}
-          </a>
-          <button onClick={logout}>Log out</button>
+          {menuOpen && (
+            <div
+              className="menu-backdrop"
+              onClick={() => setMenuOpen(false)}
+            />
+          )}
+          <button
+            className="user-trigger"
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+          >
+            <span className="avatar" aria-hidden="true">
+              {user.name.slice(0, 2).toUpperCase()}
+            </span>
+            <span className="user-name">{user.name.split(" ")[0]}</span>
+            <span className="caret" aria-hidden="true">
+              ▾
+            </span>
+          </button>
+          {menuOpen && (
+            <div className="user-dropdown" role="menu">
+              <div className="dropdown-head">
+                <b>{user.name}</b>
+                <span>{user.email}</span>
+              </div>
+              <a href="/profile" role="menuitem" onClick={() => setMenuOpen(false)}>
+                Profile
+              </a>
+              <a
+                href="/preferences"
+                role="menuitem"
+                onClick={() => setMenuOpen(false)}
+              >
+                Preferences
+              </a>
+              <button onClick={logout} role="menuitem">
+                Log out
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <a className="login-nav" href="/login">

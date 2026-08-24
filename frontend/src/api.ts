@@ -168,9 +168,55 @@ export type DemoScraper = {
   createdAt?: string;
 };
 
+export type AuthUserPayload = { name: string; email: string };
+export type AuthSession = { token: string; user: AuthUserPayload };
+export type OtpRequestResult = {
+  message: string;
+  email: string;
+  expiresAt: string;
+};
+export type OpportunityPage = {
+  items: Opportunity[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+};
+
+const TOKEN_STORAGE_KEY = "findop-token";
+
+export const authToken = {
+  get(): string | null {
+    try {
+      return localStorage.getItem(TOKEN_STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  },
+  set(token: string): void {
+    try {
+      localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    } catch {
+      /* storage unavailable — session stays in memory only */
+    }
+  },
+  clear(): void {
+    try {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+  },
+};
+
 const API_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:5000/api"
 ).replace(/\/$/, "");
+
+/** Browser entry point for social sign-in; the backend drives the redirect flow. */
+export function oauthUrl(provider: "google" | "github", next: string): string {
+  return `${API_URL}/auth/oauth/${provider}?next=${encodeURIComponent(next)}`;
+}
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -191,11 +237,13 @@ async function request<T>(
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const token = authToken.get();
     const response = await fetch(`${API_URL}${path}`, {
       ...init,
       signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(init.headers || {}),
       },
     });
@@ -233,6 +281,10 @@ async function request<T>(
 
 export const api = {
   opportunities: () => request<Opportunity[]>("/opportunities"),
+  opportunitiesPage: (limit: number, offset: number) =>
+    request<OpportunityPage>(
+      `/opportunities?limit=${limit}&offset=${offset}`,
+    ),
   opportunity: (id: string) => request<Opportunity>(`/opportunities/${id}`),
   sources: () => request<Source[]>("/sources"),
   runs: () => request<ScrapeRun[]>("/scrape-runs"),
@@ -261,4 +313,25 @@ export const api = {
       method: "POST",
       body: JSON.stringify(scraperId ? { scraperId } : {}),
     }),
+  signup: (body: { name: string; email: string; password: string }) =>
+    request<OtpRequestResult>("/auth/signup", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  verifyOtp: (body: { email: string; code: string }) =>
+    request<AuthSession>("/auth/verify-otp", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  resendOtp: (email: string) =>
+    request<OtpRequestResult>("/auth/resend-otp", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+  login: (body: { email: string; password: string }) =>
+    request<AuthSession>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  me: () => request<{ user: AuthUserPayload }>("/auth/me"),
 };

@@ -42,6 +42,35 @@ const envSchema = z.object({
   SELF_HEALING_ENABLED: z.coerce.boolean().default(false),
   MAX_EXTRACTION_CANDIDATES: z.coerce.number().int().min(1).max(30).default(5),
   EXTRACTION_CONCURRENCY: z.coerce.number().int().min(1).max(2).default(2),
+  JWT_SECRET: optionalEnv(z.string().min(16)),
+  JWT_EXPIRES_IN: z.string().trim().min(1).default("7d"),
+  SMTP_HOST: optionalEnv(z.string().trim().min(1)),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_USER: optionalEnv(z.string().trim().min(1)),
+  SMTP_PASS: optionalEnv(z.string().min(1)),
+  MAIL_FROM: optionalEnv(z.string().trim().email()),
+  FRONTEND_URL: optionalEnv(z.string().trim().url()),
+  BACKEND_URL: optionalEnv(z.string().trim().url()),
+  GOOGLE_CLIENT_ID: optionalEnv(z.string().trim().min(1)),
+  GOOGLE_CLIENT_SECRET: optionalEnv(z.string().trim().min(1)),
+  GITHUB_CLIENT_ID: optionalEnv(z.string().trim().min(1)),
+  GITHUB_CLIENT_SECRET: optionalEnv(z.string().trim().min(1)),
 });
 
-export const env = envSchema.parse(process.env);
+const parsed = envSchema.parse(process.env);
+
+const DEV_JWT_SECRET = "findop-dev-only-secret-change-me";
+
+if (!parsed.JWT_SECRET) {
+  if (parsed.NODE_ENV === "production") {
+    console.warn(
+      "[env] JWT_SECRET is not set in production; falling back to an insecure development secret. Set JWT_SECRET before deploying.",
+    );
+  }
+  parsed.JWT_SECRET = DEV_JWT_SECRET;
+}
+
+export const env = parsed;
+
+/** Always a string: falls back to an insecure dev secret when unset (warned above). */
+export const jwtSecret: string = parsed.JWT_SECRET;
