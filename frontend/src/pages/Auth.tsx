@@ -14,6 +14,11 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
   const [pendingEmail, setPendingEmail] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  // True when the failure was on our side (e.g. mail delivery) so we can
+  // point people at guest mode instead of leaving them stuck.
+  const [emailFailed, setEmailFailed] = useState(false);
+  const markEmailFailure = (e: unknown) =>
+    setEmailFailed(e instanceof ApiError && e.code === "EMAIL_SEND_FAILED");
   const [busy, setBusy] = useState(false);
   const [resendIn, setResendIn] = useState(0);
   const next =
@@ -38,6 +43,7 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
     e.preventDefault();
     if (busy) return;
     setError("");
+    setEmailFailed(false);
     setBusy(true);
     try {
       if (signup && password !== confirm)
@@ -67,6 +73,7 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
         }
       }
     } catch (e) {
+      markEmailFailure(e);
       setError(e instanceof Error ? e.message : "Could not continue.");
     } finally {
       setBusy(false);
@@ -91,12 +98,14 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
   const resendCode = async () => {
     if (busy || resendIn > 0) return;
     setError("");
+    setEmailFailed(false);
     setBusy(true);
     try {
       await resendOtp(pendingEmail);
       setNotice(`A fresh code was sent to ${pendingEmail}.`);
       setResendIn(60);
     } catch (e) {
+      markEmailFailure(e);
       setError(e instanceof Error ? e.message : "Could not resend the code.");
     } finally {
       setBusy(false);
@@ -148,6 +157,11 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
               {error && (
                 <div className="auth-error" role="alert">
                   {error}
+                  {emailFailed && (
+                    <a className="guest-hint" href="/discover">
+                      Keep exploring as a guest →
+                    </a>
+                  )}
                 </div>
               )}
               <button className="button primary full" type="submit" disabled={busy}>
@@ -228,6 +242,11 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
               {error && (
                 <div className="auth-error" role="alert">
                   {error}
+                  {emailFailed && (
+                    <a className="guest-hint" href="/discover">
+                      Keep exploring as a guest →
+                    </a>
+                  )}
                 </div>
               )}
               <button className="button primary full" type="submit" disabled={busy}>

@@ -114,12 +114,16 @@ export function createAuthService(dependencies: AuthServiceDependencies = {}) {
         devHint: `[DEV ONLY] OTP for ${email}: ${code}`,
       });
     } catch (error) {
+      // Log the real cause server-side; never leak SMTP config details to
+      // the client — they just get a "please retry or continue as guest".
+      console.error(
+        "[auth] could not deliver verification email:",
+        error instanceof Error ? error.message : error,
+      );
       throw new AppError(
         502,
         "EMAIL_SEND_FAILED",
-        error instanceof Error
-          ? `Could not send the verification email: ${error.message}`
-          : "Could not send the verification email.",
+        "We couldn't send a verification code right now. Please try again in a moment, or continue exploring as a guest.",
       );
     }
 
